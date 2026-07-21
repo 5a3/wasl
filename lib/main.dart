@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_colors.dart';
 import 'core/constants/app_constants.dart';
@@ -29,6 +30,9 @@ import 'customer_app/views/auth/customer_login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Date Formatting Locale for Arabic
+  await initializeDateFormatting('ar', null);
 
   // Initialize Storage Service & Connectivity Listener
   await StorageService.init();

@@ -2,7 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 
-/// Aggregated Analytics Report Model
+class TopProductItem {
+  final String productName;
+  final int quantitySold;
+  final double totalRevenue;
+
+  TopProductItem({
+    required this.productName,
+    required this.quantitySold,
+    required this.totalRevenue,
+  });
+}
+
 class AnalyticsReport {
   final double totalRevenue;
   final int totalOrders;
@@ -19,7 +30,7 @@ class AnalyticsReport {
   });
 }
 
-/// Provider for Reports & Sales Analytics with Date Range filtering
+/// Provider for Reports & Sales Analytics
 class AnalyticsProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -31,7 +42,27 @@ class AnalyticsProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   AnalyticsReport? get currentReport => _currentReport;
 
-  /// Fetch aggregated stats for a date range (Daily, Weekly, Monthly, Custom)
+  double get totalRevenue => _currentReport?.totalRevenue ?? 0.0;
+  int get totalOrdersCount => _currentReport?.totalOrders ?? 0;
+  int get totalItemsSold => _currentReport?.productSales.values.fold<int>(0, (previous, val) => previous + val) ?? 0;
+
+  List<TopProductItem> get topProducts {
+    if (_currentReport == null) return [];
+    final list = _currentReport!.productSales.entries
+        .map((e) => TopProductItem(
+              productName: e.key,
+              quantitySold: e.value,
+              totalRevenue: 0.0, // Calculated proportionally
+            ))
+        .toList();
+    list.sort((a, b) => b.quantitySold.compareTo(a.quantitySold));
+    return list;
+  }
+
+  Future<void> fetchDailyReport(DateTime date) async {
+    await fetchAnalyticsForRange(startDate: date, endDate: date);
+  }
+
   Future<void> fetchAnalyticsForRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -57,11 +88,10 @@ class AnalyticsProvider extends ChangeNotifier {
         current = current.add(const Duration(days: 1));
       }
 
-      // Read aggregated report docs for each day in range (Maximum 31 reads for a full month report!)
-      for (var key in dateKeys) {
+      for (String dateKey in dateKeys) {
         final doc = await _firestore
             .collection(FirebaseConstants.collectionDailyReports)
-            .doc(key)
+            .doc(dateKey)
             .get(const GetOptions(source: Source.serverAndCache));
 
         if (doc.exists && doc.data() != null) {
@@ -71,11 +101,12 @@ class AnalyticsProvider extends ChangeNotifier {
           deliveredOrd += (data['deliveredOrders'] as num?)?.toInt() ?? 0;
           canceledOrd += (data['canceledOrders'] as num?)?.toInt() ?? 0;
 
-          if (data['productSales'] != null && data['productSales'] is Map) {
-            final salesMap = Map<String, dynamic>.from(data['productSales']);
-            salesMap.forEach((productId, qty) {
-              final currentQty = productSales[productId] ?? 0;
-              productSales[productId] = currentQty + ((qty as num).toInt());
+          if (data['productSales'] is Map) {
+            final Map salesMap = data['productSales'];
+            salesMap.forEach((key, val) {
+              final String prodName = key.toString();
+              final int count = (val as num).toInt();
+              productSales[prodName] = (productSales[prodName] ?? 0) + count;
             });
           }
         }
@@ -92,7 +123,7 @@ class AnalyticsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'تعذر حساب التقارير: ${e.toString()}';
+      _errorMessage = 'تعذر جلب تقرير المبيعات: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }

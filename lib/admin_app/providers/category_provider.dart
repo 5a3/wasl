@@ -3,18 +3,30 @@ import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../shared/models/category_model.dart';
 
-/// Provider for managing Main and Sub Categories
+/// Provider for managing Main and Sub Categories with full CRUD & Search
 class CategoryProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<CategoryModel> _categories = [];
   bool _isLoading = false;
   String? _errorMessage;
+  String _searchQuery = '';
 
-  List<CategoryModel> get categories => _categories;
-  List<CategoryModel> get mainCategories => _categories.where((c) => c.isMainCategory).toList();
+  List<CategoryModel> get categories {
+    if (_searchQuery.trim().isEmpty) return _categories;
+    final query = _searchQuery.trim().toLowerCase();
+    return _categories.where((c) => c.name.toLowerCase().contains(query)).toList();
+  }
+
+  List<CategoryModel> get mainCategories => categories.where((c) => c.isMainCategory).toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get searchQuery => _searchQuery;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
 
   List<CategoryModel> getSubCategories(String parentId) {
     return _categories.where((c) => c.parentId == parentId).toList();
@@ -70,28 +82,54 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> toggleCategoryStatus(String id, bool isActive) async {
+  Future<bool> editCategory({
+    required String id,
+    required String name,
+    String? parentId,
+    required String imageUrl,
+  }) async {
+    try {
+      final index = _categories.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        final updated = CategoryModel(
+          id: id,
+          name: name.trim(),
+          parentId: parentId,
+          imageUrl: imageUrl.isNotEmpty ? imageUrl : _categories[index].imageUrl,
+          isActive: _categories[index].isActive,
+          orderIndex: _categories[index].orderIndex,
+        );
+
+        await _firestore
+            .collection(FirebaseConstants.collectionCategories)
+            .doc(id)
+            .update(updated.toMap());
+
+        _categories[index] = updated;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _errorMessage = 'فشل تعديل الفئة: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteCategory(String id) async {
     try {
       await _firestore
           .collection(FirebaseConstants.collectionCategories)
           .doc(id)
-          .update({'isActive': isActive});
+          .delete();
 
-      final index = _categories.indexWhere((c) => c.id == id);
-      if (index != -1) {
-        final old = _categories[index];
-        _categories[index] = CategoryModel(
-          id: old.id,
-          name: old.name,
-          parentId: old.parentId,
-          imageUrl: old.imageUrl,
-          isActive: isActive,
-          orderIndex: old.orderIndex,
-        );
-        notifyListeners();
-      }
+      _categories.removeWhere((c) => c.id == id);
+      notifyListeners();
       return true;
     } catch (e) {
+      _errorMessage = 'فشل حذف الفئة: ${e.toString()}';
+      notifyListeners();
       return false;
     }
   }

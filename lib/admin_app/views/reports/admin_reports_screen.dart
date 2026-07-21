@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../providers/analytics_provider.dart';
 
@@ -14,229 +18,267 @@ class AdminReportsScreen extends StatefulWidget {
 }
 
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
-  DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchTodayReports();
+      Provider.of<AnalyticsProvider>(context, listen: false).fetchDailyReport(_selectedDate);
     });
   }
 
-  void _fetchTodayReports() {
-    final now = DateTime.now();
-    _startDate = now;
-    _endDate = now;
-    Provider.of<AnalyticsProvider>(context, listen: false).fetchAnalyticsForRange(
-      startDate: _startDate,
-      endDate: _endDate,
-    );
-  }
-
-  void _fetchWeeklyReports() {
-    final now = DateTime.now();
-    _startDate = now.subtract(const Duration(days: 7));
-    _endDate = now;
-    Provider.of<AnalyticsProvider>(context, listen: false).fetchAnalyticsForRange(
-      startDate: _startDate,
-      endDate: _endDate,
-    );
-  }
-
-  void _fetchMonthlyReports() {
-    final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = now;
-    Provider.of<AnalyticsProvider>(context, listen: false).fetchAnalyticsForRange(
-      startDate: _startDate,
-      endDate: _endDate,
-    );
-  }
-
-  void _pickCustomDateRange() async {
-    final picked = await showDateRangePicker(
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime(2025),
-      lastDate: DateTime(2030),
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      initialDate: _selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
     );
-    if (picked != null) {
+    if (picked != null && picked != _selectedDate) {
       setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
+        _selectedDate = picked;
       });
       if (mounted) {
-        Provider.of<AnalyticsProvider>(context, listen: false).fetchAnalyticsForRange(
-          startDate: _startDate,
-          endDate: _endDate,
-        );
+        Provider.of<AnalyticsProvider>(context, listen: false).fetchDailyReport(picked);
       }
     }
   }
 
+  Future<void> _exportPdfReport(AnalyticsProvider analytics) async {
+    final pdf = pw.Document();
+
+    final cairoRegular = await PdfGoogleFonts.cairoMedium();
+    final cairoBold = await PdfGoogleFonts.cairoBold();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(
+          base: cairoRegular,
+          bold: cairoBold,
+        ),
+        build: (pw.Context pwContext) {
+          return pw.Directionality(
+            textDirection: pw.TextDirection.rtl,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Header(
+                  level: 0,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('تقرير مبيعات واصل الوجبات السريعة', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                      pw.Text(Formatters.formatDate(_selectedDate), style: const pw.TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Text('إجمالي المبيعات والإيرادات: ${Formatters.formatCurrency(analytics.totalRevenue)}', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                pw.Text('عدد الطلبات الإجمالي: ${analytics.totalOrdersCount} طلب', style: const pw.TextStyle(fontSize: 11)),
+                pw.Text('عدد الوجبات والمنتجات المباعة: ${analytics.totalItemsSold} قطعة', style: const pw.TextStyle(fontSize: 11)),
+                pw.SizedBox(height: 20),
+                pw.Text('الأصناف والوجبات الأكثر مبيعاً:', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                pw.Divider(thickness: 0.5),
+                ...analytics.topProducts.map((p) => pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(p.productName, style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text('الكمية المباعة: ${p.quantitySold} قطعة', style: const pw.TextStyle(fontSize: 10)),
+                      ],
+                    )),
+                pw.Spacer(),
+                pw.Divider(thickness: 0.5),
+                pw.Center(child: pw.Text('تم استخراج هذا التقرير تلقائياً من نظام واصل للمأكولات السريعة والعصائر', style: const pw.TextStyle(fontSize: 9))),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'تقرير_مبيعات_${Formatters.formatDate(_selectedDate)}',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final analytics = Provider.of<AnalyticsProvider>(context);
-    final report = analytics.currentReport;
-
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'تصفية وتقارير المبيعات',
-              style: AppFonts.cairoFont(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: _fetchTodayReports,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                    child: const Text('اليوم', style: TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: _fetchWeeklyReports,
-                    child: const Text('هذا الأسبوع'),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: _fetchMonthlyReports,
-                    child: const Text('هذا الشهر'),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.date_range, color: AppColors.primary),
-                    tooltip: 'فلترة من تاريخ إلى تاريخ',
-                    onPressed: _pickCustomDateRange,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'الفترة: من ${Formatters.formatDate(_startDate)} إلى ${Formatters.formatDate(_endDate)}',
-              style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 20),
-            if (analytics.isLoading)
-              const LoadingIndicator(message: 'جاري حساب التقارير وتوفير القراءات...')
-            else if (report != null) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      title: 'إجمالي المبيعات',
-                      value: Formatters.formatCurrency(report.totalRevenue),
-                      color: AppColors.primary,
-                      icon: Icons.attach_money,
+      body: Consumer<AnalyticsProvider>(
+        builder: (context, analytics, _) {
+          if (analytics.isLoading) {
+            return const LoadingIndicator(message: 'جاري احتساب التقارير والإحصائيات...');
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date Picker Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'تقرير يوم: ${Formatters.formatDate(_selectedDate)}',
+                      style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMetricCard(
-                      title: 'عدد الطلبات',
-                      value: '${report.totalOrders} طلب',
-                      color: AppColors.info,
-                      icon: Icons.shopping_bag,
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                      icon: const Icon(Icons.calendar_today, color: Colors.white, size: 16),
+                      label: Text(
+                        'تغيير اليوم',
+                        style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _pickDate,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      title: 'الطلبات المكتملة',
-                      value: '${report.deliveredOrders} طلب',
-                      color: AppColors.success,
-                      icon: Icons.check_circle,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMetricCard(
-                      title: 'الطلبات الملغاة',
-                      value: '${report.canceledOrders} طلب',
-                      color: AppColors.danger,
-                      icon: Icons.cancel,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'تفاصيل مبيعات المنتجات في الفترة المحددة',
-                style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              if (report.productSales.isEmpty)
-                Text(
-                  'لا توجد مبيعات منتجات مسجلة في هذه الفترة',
-                  style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
-                )
-              else
-                ListView.builder(
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Cards Summary Grid
+                GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.4,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: report.productSales.length,
-                  itemBuilder: (ctx, index) {
-                    final prodId = report.productSales.keys.elementAt(index);
-                    final qty = report.productSales[prodId];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: AppColors.accent,
-                          child: Icon(Icons.fastfood, color: Colors.black),
-                        ),
-                        title: Text('منتج المعرف: $prodId', style: AppFonts.cairoFont(fontWeight: FontWeight.bold)),
-                        trailing: Text(
-                          'تم بيع $qty قطعة',
-                          style: AppFonts.cairoFont(fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
-                      ),
-                    );
-                  },
+                  children: [
+                    _buildStatCard(
+                      'مجموع الإيرادات',
+                      Formatters.formatCurrency(analytics.totalRevenue),
+                      Icons.account_balance_wallet,
+                      AppColors.success,
+                    ),
+                    _buildStatCard(
+                      'عدد الطلبات',
+                      '${analytics.totalOrdersCount} طلب',
+                      Icons.shopping_bag,
+                      AppColors.primary,
+                    ),
+                    _buildStatCard(
+                      'أصناف مباعة',
+                      '${analytics.totalItemsSold} قطعة',
+                      Icons.fastfood,
+                      AppColors.warning,
+                    ),
+                    _buildStatCard(
+                      'متوسط الطلب',
+                      Formatters.formatCurrency(analytics.totalOrdersCount > 0 ? analytics.totalRevenue / analytics.totalOrdersCount : 0),
+                      Icons.trending_up,
+                      AppColors.info,
+                    ),
+                  ],
                 ),
-            ],
-          ],
-        ),
+
+                const SizedBox(height: 28),
+
+                // Export PDF Button
+                CustomButton(
+                  text: 'تصدير وطباعة تقرير المبيعات PDF 📄',
+                  onPressed: () => _exportPdfReport(analytics),
+                ),
+
+                const SizedBox(height: 28),
+
+                Text(
+                  'الوجبات والأصناف الأكثر مبيعاً 🏆',
+                  style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+
+                analytics.topProducts.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text(
+                            'لا توجد مبيعات مسجلة في هذا اليوم',
+                            style: AppFonts.cairoFont(color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: analytics.topProducts.length,
+                        itemBuilder: (ctx, idx) {
+                          final item = analytics.topProducts[idx];
+                          final maxQty = analytics.topProducts.first.quantitySold;
+                          final progress = maxQty > 0 ? item.quantitySold / maxQty : 0.0;
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '#${idx + 1} - ${item.productName}',
+                                        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '${item.quantitySold} قطعة (${Formatters.formatCurrency(item.totalRevenue)})',
+                                        style: AppFonts.cairoFont(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: progress.clamp(0.0, 1.0),
+                                      minHeight: 8,
+                                      backgroundColor: Colors.grey.shade200,
+                                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(title, style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold, color: color),
-            ),
-          ],
-        ),
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withAlpha(50)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade800)),
+              Icon(icon, color: color, size: 24),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+          ),
+        ],
       ),
     );
   }

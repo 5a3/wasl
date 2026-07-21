@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
+import '../../../core/widgets/loading_indicator.dart';
+import '../../../shared/models/admin_model.dart';
 import '../../providers/admin_auth_provider.dart';
 
 class AdminSubAdminsScreen extends StatefulWidget {
@@ -14,14 +16,38 @@ class AdminSubAdminsScreen extends StatefulWidget {
 }
 
 class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
-  void _showAddSubAdminDialog() {
-    final nameController = TextEditingController();
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
-    bool canManageOrders = true;
-    bool canManageProducts = false;
-    bool canViewReports = false;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AdminAuthProvider>(context, listen: false).fetchSubAdmins();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showAddOrEditAdminDialog([AdminModel? adminToEdit]) {
+    final isEditing = adminToEdit != null;
+    final usernameController = TextEditingController(text: adminToEdit?.username ?? '');
+    final passwordController = TextEditingController(text: adminToEdit?.password ?? '');
+    final fullNameController = TextEditingController(text: adminToEdit?.fullName ?? '');
+
+    final availablePermissions = [
+      {'key': 'manage_products', 'label': 'إدارة المنتجات والقوائم'},
+      {'key': 'manage_orders', 'label': 'إدارة الطلبات وتحديث حالتها'},
+      {'key': 'view_reports', 'label': 'استعراض التقارير المالية'},
+      {'key': 'manage_admins', 'label': 'إدارة وتعيين المدراء الفرعيين'},
+    ];
+
+    List<String> selectedPermissions = isEditing
+        ? List<String>.from(adminToEdit.permissions)
+        : ['manage_products', 'manage_orders'];
 
     showDialog(
       context: context,
@@ -33,7 +59,7 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Text(
-                'إضافة مدير فرعي جديد',
+                isEditing ? 'تعديل بيانات المدير' : 'إضافة مدير فرعي جديد',
                 textAlign: TextAlign.center,
                 style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
               ),
@@ -42,45 +68,49 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CustomTextField(
-                      controller: nameController,
-                      labelText: 'الاسم الكامل',
-                      hintText: 'مثال: أحمد علي (مشرف الطلبات)',
+                      controller: fullNameController,
+                      labelText: 'الاسم الكامل للمدير',
+                      hintText: 'مثال: محمد علي (مشرف الشيفت الصباحي)',
                     ),
                     const SizedBox(height: 10),
                     CustomTextField(
                       controller: usernameController,
-                      labelText: 'اسم المستخدم',
-                      hintText: 'اسم منحصر لتسجيل الدخول',
+                      labelText: 'اسم المستخدم للدخول',
+                      hintText: 'مثال: mohammed',
                     ),
                     const SizedBox(height: 10),
                     CustomTextField(
                       controller: passwordController,
                       labelText: 'كلمة المرور',
-                      hintText: 'ادخل كلمة المرور عادي بدون تشفير',
+                      hintText: '123456',
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'صلاحيات المدير الفرعي:',
-                      style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
+                      'الصلاحيات الممنوحة للمدير:',
+                      style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
-                    CheckboxListTile(
-                      title: const Text('إدارة ومتابعة الطلبات'),
-                      value: canManageOrders,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setStateDialog(() => canManageOrders = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      title: const Text('إضافة وإدارة المنتجات'),
-                      value: canManageProducts,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setStateDialog(() => canManageProducts = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      title: const Text('مشاهدة التقارير والإحصائيات'),
-                      value: canViewReports,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setStateDialog(() => canViewReports = val ?? false),
-                    ),
+                    const SizedBox(height: 6),
+                    ...availablePermissions.map((perm) {
+                      final pKey = perm['key']!;
+                      final pLabel = perm['label']!;
+                      final isSelected = selectedPermissions.contains(pKey);
+
+                      return CheckboxListTile(
+                        dense: true,
+                        title: Text(pLabel, style: AppFonts.cairoFont(fontSize: 12)),
+                        value: isSelected,
+                        activeColor: AppColors.primary,
+                        onChanged: (val) {
+                          setStateDialog(() {
+                            if (val == true) {
+                              selectedPermissions.add(pKey);
+                            } else {
+                              selectedPermissions.remove(pKey);
+                            }
+                          });
+                        },
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -91,31 +121,46 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (nameController.text.trim().isEmpty ||
-                        usernameController.text.trim().isEmpty ||
-                        passwordController.text.isEmpty) {
-                      CustomDialog.showErrorSnackBar(context, 'يرجى إدخال كافة البيانات');
+                    final username = usernameController.text.trim();
+                    final password = passwordController.text.trim();
+                    final fullName = fullNameController.text.trim();
+
+                    if (username.isEmpty || password.isEmpty || fullName.isEmpty) {
+                      CustomDialog.showErrorSnackBar(context, 'يرجى إكمال جميع البيانات المطلوبة');
                       return;
                     }
 
-                    final perms = <String>[];
-                    if (canManageOrders) perms.add('manage_orders');
-                    if (canManageProducts) perms.add('manage_products');
-                    if (canViewReports) perms.add('view_reports');
+                    bool ok = false;
+                    if (isEditing) {
+                      ok = await authProvider.editSubAdmin(
+                        id: adminToEdit.id,
+                        username: username,
+                        password: password,
+                        fullName: fullName,
+                        permissions: selectedPermissions,
+                      );
+                    } else {
+                      ok = await authProvider.addSubAdmin(
+                        username: username,
+                        password: password,
+                        fullName: fullName,
+                        permissions: selectedPermissions,
+                      );
+                    }
 
-                    final ok = await authProvider.addSubAdmin(
-                      username: usernameController.text,
-                      password: passwordController.text,
-                      fullName: nameController.text,
-                      permissions: perms,
-                    );
-
-                    if (ok && ctx.mounted) {
-                      Navigator.of(ctx).pop();
-                      CustomDialog.showSuccessSnackBar(context, 'تم إضافة المدير الفرعي بنجاح');
+                    if (ok) {
+                      if (ctx.mounted) {
+                        Navigator.of(ctx).pop();
+                        CustomDialog.showSuccessSnackBar(
+                          ctx,
+                          isEditing ? 'تم تعديل بيانات المدير بنجاح' : 'تم إضافة المدير الفرعي بنجاح',
+                        );
+                      }
+                    } else if (authProvider.errorMessage != null && ctx.mounted) {
+                      CustomDialog.showErrorSnackBar(ctx, authProvider.errorMessage!);
                     }
                   },
-                  child: const Text('حفظ'),
+                  child: Text(isEditing ? 'حفظ التعديلات' : 'إضافة المدير'),
                 ),
               ],
             );
@@ -125,66 +170,137 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
     );
   }
 
+  void _confirmDelete(AdminModel admin) async {
+    final confirm = await CustomDialog.showConfirmDialog(
+      context: context,
+      title: 'حذف حساب المدير',
+      message: 'هل أنت تأكد من حذف حساب المدير "${admin.fullName}" (${admin.username})؟',
+      confirmColor: AppColors.danger,
+    );
+
+    if (confirm == true && mounted) {
+      final ok = await Provider.of<AdminAuthProvider>(context, listen: false).deleteSubAdmin(admin.id);
+      if (ok && mounted) {
+        CustomDialog.showSuccessSnackBar(context, 'تم حذف حساب المدير بنجاح');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentAdmin = Provider.of<AdminAuthProvider>(context).currentAdmin;
-
     return Scaffold(
-      floatingActionButton: currentAdmin?.isSuperAdmin == true
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.primary,
-              onPressed: _showAddSubAdminDialog,
-              icon: const Icon(Icons.person_add, color: Colors.white),
-              label: Text(
-                'إضافة مدير فرعي',
-                style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            )
-          : null,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              color: AppColors.primary.withAlpha(15),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.security, color: AppColors.primary, size: 36),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'حسابك الحالي: ${currentAdmin?.fullName ?? "مدير"}',
-                            style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'الدور: ${currentAdmin?.isSuperAdmin == true ? "مدير عام النظام (Super Admin)" : "مدير فرعي (Sub Admin)"}',
-                            style: AppFonts.cairoFont(fontSize: 13, color: AppColors.primary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        onPressed: () => _showAddOrEditAdminDialog(),
+        icon: const Icon(Icons.person_add, color: Colors.white),
+        label: Text(
+          'إضافة مدير فرعي',
+          style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: Consumer<AdminAuthProvider>(
+        builder: (context, authProvider, _) {
+          return Column(
+            children: [
+              // Search Bar Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    authProvider.setSearchQuery(val);
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'ابحث باسم المدير أو اسم المستخدم...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: authProvider.searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              authProvider.setSearchQuery('');
+                            },
+                          )
+                        : null,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'إدارة المدراء والفرعيين وصلاحياتهم',
-              style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'المدير العام لديه كافة الصلاحيات، بينما يمكنك منح المدراء الفرعيين صلاحيات محددة فقط لمنع العبث بالبيانات.',
-              style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade600),
-            ),
-          ],
-        ),
+              Expanded(
+                child: authProvider.isLoading
+                    ? const LoadingIndicator(message: 'جاري جلب قائمة المدراء والمشرفين...')
+                    : authProvider.subAdmins.isEmpty
+                        ? Center(
+                            child: Text(
+                              authProvider.searchQuery.isNotEmpty ? 'لا توجد نتائج مطابقة' : 'لا يوجد مدراء فرعيون مضافون حالياً',
+                              style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: authProvider.subAdmins.length,
+                            itemBuilder: (ctx, index) {
+                              final admin = authProvider.subAdmins[index];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: admin.isSuperAdmin ? AppColors.accent : AppColors.primary.withAlpha(20),
+                                        child: Icon(
+                                          admin.isSuperAdmin ? Icons.star : Icons.person,
+                                          color: admin.isSuperAdmin ? Colors.black : AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              admin.fullName,
+                                              style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold),
+                                            ),
+                                            Text(
+                                              'اسم المستخدم: ${admin.username}  |  كلمة المرور: ${admin.password}',
+                                              style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'الدور: ${admin.isSuperAdmin ? "مدير عام سوبر" : "مدير فرعي"}',
+                                              style: AppFonts.cairoFont(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: admin.isSuperAdmin ? Colors.orange.shade800 : AppColors.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_outlined, color: AppColors.info),
+                                            onPressed: () => _showAddOrEditAdminDialog(admin),
+                                          ),
+                                          if (!admin.isSuperAdmin)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                              onPressed: () => _confirmDelete(admin),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

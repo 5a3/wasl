@@ -57,7 +57,6 @@ class DefaultFirebaseOptions {
     projectId: 'wasl-cdcb6',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCn_UpQ32Sm2u6RDRnZ_hBionzm_ZoJLeQ',
     appId: '1:317958059758:ios:13ea22b513b4654dbca5ff',
@@ -66,7 +65,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
     iosBundleId: 'com.example.wasl',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCn_UpQ32Sm2u6RDRnZ_hBionzm_ZoJLeQ',
     appId: '1:317958059758:ios:13ea22b513b4654dbca5ff',

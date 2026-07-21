@@ -128,6 +128,55 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 isLoading: authProvider.isLoading,
                 onPressed: _submitLogin,
               ),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                label: Text(
+                  'إضافة وتعبئة حساب مدير مبدئي (ahmed / 123456)',
+                  style: AppFonts.cairoFont(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final ok = await authProvider.createInitialAdmin(
+                    username: 'ahmed',
+                    password: '123456',
+                  );
+                  if (ok) {
+                    setState(() {
+                      _usernameController.text = 'ahmed';
+                      _passwordController.text = '123456';
+                    });
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'تم إنشاء حساب المدير (ahmed) بنجاح وتعبئة البيانات! يمكنك الآن اضغط تسجيل الدخول.',
+                          style: AppFonts.cairoFont(color: Colors.white),
+                        ),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  } else if (authProvider.errorMessage != null) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          authProvider.errorMessage!,
+                          style: AppFonts.cairoFont(color: Colors.white),
+                        ),
+                        backgroundColor: AppColors.danger,
+                      ),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),

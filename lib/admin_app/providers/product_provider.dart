@@ -3,17 +3,32 @@ import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../shared/models/product_model.dart';
 
-/// Provider for Product Management (up to 3 images, availability toggle, price)
+/// Provider for Product Management (CRUD, Search, Full Edit & Availability toggle)
 class ProductProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<ProductModel> _products = [];
   bool _isLoading = false;
   String? _errorMessage;
+  String _searchQuery = '';
 
-  List<ProductModel> get products => _products;
+  List<ProductModel> get products {
+    if (_searchQuery.trim().isEmpty) return _products;
+    final query = _searchQuery.trim().toLowerCase();
+    return _products.where((p) =>
+      p.name.toLowerCase().contains(query) ||
+      p.description.toLowerCase().contains(query)
+    ).toList();
+  }
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get searchQuery => _searchQuery;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
 
   List<ProductModel> getProductsBySubCategory(String subCatId) {
     return _products.where((p) => p.subCategoryId == subCatId).toList();
@@ -62,7 +77,7 @@ class ProductProvider extends ChangeNotifier {
         price: price,
         mainCategoryId: mainCategoryId,
         subCategoryId: subCategoryId,
-        images: images.take(3).toList(), // Limit max 3 images
+        images: images.take(3).toList(),
         isAvailable: isAvailable,
         salesCount: 0,
         createdAt: DateTime.now(),
@@ -74,6 +89,69 @@ class ProductProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = 'فشل إضافة المنتج: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Full Product Edit (name, price, description, images, category, availability)
+  Future<bool> editProduct({
+    required String id,
+    required String name,
+    required String description,
+    required double price,
+    required String mainCategoryId,
+    required String subCategoryId,
+    required List<String> images,
+    required bool isAvailable,
+  }) async {
+    try {
+      final index = _products.indexWhere((p) => p.id == id);
+      if (index != -1) {
+        final old = _products[index];
+        final updated = ProductModel(
+          id: id,
+          name: name.trim(),
+          description: description.trim(),
+          price: price,
+          mainCategoryId: mainCategoryId,
+          subCategoryId: subCategoryId,
+          images: images.isNotEmpty ? images.take(3).toList() : old.images,
+          isAvailable: isAvailable,
+          salesCount: old.salesCount,
+          createdAt: old.createdAt,
+        );
+
+        await _firestore
+            .collection(FirebaseConstants.collectionProducts)
+            .doc(id)
+            .update(updated.toMap());
+
+        _products[index] = updated;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _errorMessage = 'فشل تعديل المنتج: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Delete Product
+  Future<bool> deleteProduct(String id) async {
+    try {
+      await _firestore
+          .collection(FirebaseConstants.collectionProducts)
+          .doc(id)
+          .delete();
+
+      _products.removeWhere((p) => p.id == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'فشل حذف المنتج: ${e.toString()}';
       notifyListeners();
       return false;
     }
