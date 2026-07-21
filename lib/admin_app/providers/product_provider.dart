@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../shared/models/product_model.dart';
+import '../../core/services/firebase_storage_service.dart';
 
 /// Provider for Product Management (CRUD, Search, Full Edit & Availability toggle)
 class ProductProvider extends ChangeNotifier {
@@ -142,6 +143,16 @@ class ProductProvider extends ChangeNotifier {
   /// Delete Product
   Future<bool> deleteProduct(String id) async {
     try {
+      final index = _products.indexWhere((p) => p.id == id);
+      if (index != -1) {
+        final oldImages = _products[index].images;
+        for (final img in oldImages) {
+          if (img.isNotEmpty) {
+            await FirebaseStorageService.deleteImage(img);
+          }
+        }
+      }
+
       await _firestore
           .collection(FirebaseConstants.collectionProducts)
           .doc(id)

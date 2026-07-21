@@ -4,6 +4,8 @@ import '../../core/constants/firebase_constants.dart';
 import '../../shared/models/category_model.dart';
 
 /// Provider for managing Main and Sub Categories with full CRUD & Search
+import '../../core/services/firebase_storage_service.dart';
+
 class CategoryProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -119,6 +121,14 @@ class CategoryProvider extends ChangeNotifier {
 
   Future<bool> deleteCategory(String id) async {
     try {
+      final index = _categories.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        final imageUrl = _categories[index].imageUrl;
+        if (imageUrl.isNotEmpty) {
+          await FirebaseStorageService.deleteImage(imageUrl);
+        }
+      }
+
       await _firestore
           .collection(FirebaseConstants.collectionCategories)
           .doc(id)

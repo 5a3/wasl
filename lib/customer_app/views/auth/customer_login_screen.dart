@@ -67,17 +67,11 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
             children: [
               const SizedBox(height: 16),
               Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 60,
-                    color: AppColors.primary,
-                  ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 20),

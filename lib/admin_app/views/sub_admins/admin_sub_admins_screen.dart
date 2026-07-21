@@ -190,6 +190,7 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_sub_admins',
         backgroundColor: AppColors.primary,
         onPressed: () => _showAddOrEditAdminDialog(),
         icon: const Icon(Icons.person_add, color: Colors.white),

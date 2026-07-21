@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -51,6 +52,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     final cairoRegular = await PdfGoogleFonts.cairoMedium();
     final cairoBold = await PdfGoogleFonts.cairoBold();
 
+    final logoData = await rootBundle.load('assets/images/logoreport.png');
+    final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -69,8 +73,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('تقرير مبيعات واصل الوجبات السريعة', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: cairoBold)),
-                      pw.Text(Formatters.formatDate(_selectedDate), style: const pw.TextStyle(fontSize: 12)),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('تقرير مبيعات واصل الوجبات السريعة', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                          pw.Text('تاريخ التقرير: ${Formatters.formatDate(_selectedDate)}', style: const pw.TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                      pw.Container(
+                        width: 50,
+                        height: 50,
+                        child: pw.Image(logoImage),
+                      ),
                     ],
                   ),
                 ),

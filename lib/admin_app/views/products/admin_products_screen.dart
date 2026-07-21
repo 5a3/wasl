@@ -4,7 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_dialog.dart';
-import '../../../core/widgets/loading_indicator.dart';
+import '../../../core/widgets/custom_cached_image.dart';
+import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/product_model.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
@@ -67,6 +68,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_products',
         backgroundColor: AppColors.primary,
         onPressed: _openAddProduct,
         icon: const Icon(Icons.add, color: Colors.white),
@@ -104,7 +106,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               ),
               Expanded(
                 child: prodProvider.isLoading
-                    ? const LoadingIndicator(message: 'جاري جلب المنتجات...')
+                    ? const ShimmerLoadingList(itemCount: 8, height: 65)
                     : prodProvider.products.isEmpty
                         ? Center(
                             child: Text(
@@ -125,20 +127,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          ClipRRect(
+                                          CustomCachedImage(
+                                            imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                                            width: 65,
+                                            height: 65,
                                             borderRadius: BorderRadius.circular(10),
-                                            child: Container(
-                                              width: 65,
-                                              height: 65,
-                                              color: Colors.grey.shade200,
-                                              child: product.images.isNotEmpty
-                                                  ? Image.network(
-                                                      product.images.first,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Colors.grey),
-                                                    )
-                                                  : const Icon(Icons.fastfood, color: Colors.grey),
-                                            ),
+                                            errorWidget: const Icon(Icons.fastfood, color: Colors.grey),
                                           ),
                                           const SizedBox(width: 14),
                                           Expanded(

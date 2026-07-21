@@ -80,6 +80,15 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'أدخل بياناتك الشخصية بالتفصيل',
                 style: AppFonts.cairoFont(

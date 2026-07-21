@@ -30,7 +30,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late TextEditingController _priceController;
 
   CategoryModel? _selectedMainCat;
-  CategoryModel? _selectedSubCat;
   bool _isAvailable = true;
   bool _isUploading = false;
 
@@ -55,11 +54,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         if (mainIndex != -1) {
           setState(() {
             _selectedMainCat = catProvider.mainCategories[mainIndex];
-            final subCats = catProvider.getSubCategories(_selectedMainCat!.id);
-            final subIndex = subCats.indexWhere((c) => c.id == widget.productToEdit!.subCategoryId);
-            if (subIndex != -1) {
-              _selectedSubCat = subCats[subIndex];
-            }
           });
         }
       }
@@ -98,6 +92,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       return;
     }
 
+    // New products require at least 1 image
+    if (!isEditing && _pickedImageFiles.isEmpty) {
+      CustomDialog.showErrorSnackBar(context, 'يرجى اختيار صورة واحدة على الأقل للمنتج');
+      return;
+    }
+
     final prodProvider = Provider.of<ProductProvider>(context, listen: false);
     final prodName = _nameController.text.trim();
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -108,6 +108,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
     try {
       final finalImageUrls = <String>[];
+      List<String>? oldImageUrls;
+
+      // If user is editing and picked new images, prepare to delete the old ones
+      if (isEditing && _pickedImageFiles.isNotEmpty) {
+        oldImageUrls = List<String>.from(_existingImageUrls);
+      }
 
       // 1. Upload newly picked images to Storage folder <category_name>/<product_name>_index.jpg
       for (int i = 0; i < _pickedImageFiles.length; i++) {
@@ -133,7 +139,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           description: _descController.text,
           price: priceVal,
           mainCategoryId: _selectedMainCat!.id,
-          subCategoryId: _selectedSubCat?.id ?? _selectedMainCat!.id,
+          subCategoryId: _selectedMainCat!.id,
           images: finalImageUrls,
           isAvailable: _isAvailable,
         );
@@ -143,7 +149,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           description: _descController.text,
           price: priceVal,
           mainCategoryId: _selectedMainCat!.id,
-          subCategoryId: _selectedSubCat?.id ?? _selectedMainCat!.id,
+          subCategoryId: _selectedMainCat!.id,
           images: finalImageUrls,
           isAvailable: _isAvailable,
         );
@@ -152,6 +158,17 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       if (!mounted) return;
 
       if (ok) {
+        // Delete the old replaced product images from Firebase Storage now that editing is fully completed
+        if (oldImageUrls != null) {
+          for (final url in oldImageUrls) {
+            if (url.isNotEmpty) {
+              await FirebaseStorageService.deleteImage(url);
+            }
+          }
+        }
+
+        if (!mounted) return;
+
         CustomDialog.showSuccessSnackBar(
           context,
           isEditing ? 'تم تعديل المنتج بنجاح' : 'تم إضافة المنتج وحفظ الصور بمجلد ${_selectedMainCat!.name}/',
@@ -177,9 +194,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Widget build(BuildContext context) {
     final catProvider = Provider.of<CategoryProvider>(context);
     final mainCats = catProvider.mainCategories;
-    final subCats = _selectedMainCat != null
-        ? catProvider.getSubCategories(_selectedMainCat!.id)
-        : <CategoryModel>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -193,7 +207,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                isEditing ? 'تعديل بيانات المنتج وسعره وتوفره' : 'إدخال بيانات الوجبة/العصير ورابط الصور',
+                isEditing ? 'تعديل بيانات المنتج وسعره وتوفره' : 'إدخال بيانات الوجبة/العصير وصورها',
                 style: AppFonts.cairoFont(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -221,32 +235,17 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 prefixIcon: Icons.attach_money_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال السعر' : null,
               ),
-              const SizedBox(height: 14),
+               const SizedBox(height: 14),
               DropdownButtonFormField<CategoryModel>(
                 value: _selectedMainCat,
                 decoration: const InputDecoration(
-                  labelText: 'الفئة الرئيسية',
+                  labelText: 'اختر الفئة التابع لها المنتج',
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
                 items: mainCats.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.name))).toList(),
                 onChanged: (val) {
                   setState(() {
                     _selectedMainCat = val;
-                    _selectedSubCat = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<CategoryModel>(
-                value: _selectedSubCat,
-                decoration: const InputDecoration(
-                  labelText: 'الفئة الفرعية (اختياري)',
-                  prefixIcon: Icon(Icons.account_tree_outlined),
-                ),
-                items: subCats.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.name))).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedSubCat = val;
                   });
                 },
               ),
@@ -266,7 +265,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   'اختيار صور من المعرض (حتى 3 صور)',
                   style: AppFonts.cairoFont(color: Colors.black, fontWeight: FontWeight.bold),
                 ),
-                onPressed: _pickImages,
+                onPressed: _isUploading ? null : _pickImages,
               ),
               const SizedBox(height: 12),
               // Live Previews of selected or existing images

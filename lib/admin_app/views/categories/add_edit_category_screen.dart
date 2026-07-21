@@ -24,9 +24,7 @@ class AddEditCategoryScreen extends StatefulWidget {
 class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _urlController;
 
-  CategoryModel? _selectedMainCategory;
   dynamic _pickedImageFile;
   String? _pickedImageName;
   bool _isUploading = false;
@@ -37,25 +35,11 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.categoryToEdit?.name ?? '');
-    _urlController = TextEditingController(text: widget.categoryToEdit?.imageUrl ?? '');
-
-    if (isEditing && widget.categoryToEdit?.parentId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final catProvider = Provider.of<CategoryProvider>(context, listen: false);
-        final parentIndex = catProvider.mainCategories.indexWhere((c) => c.id == widget.categoryToEdit!.parentId);
-        if (parentIndex != -1) {
-          setState(() {
-            _selectedMainCategory = catProvider.mainCategories[parentIndex];
-          });
-        }
-      });
-    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _urlController.dispose();
     super.dispose();
   }
 
@@ -81,6 +65,12 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   void _saveCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // A category image is strictly required when creating a new category
+    if (!isEditing && _pickedImageFile == null) {
+      CustomDialog.showErrorSnackBar(context, 'يرجى اختيار صورة للفئة أولاً');
+      return;
+    }
+
     final categoryName = _nameController.text.trim();
     final catProvider = Provider.of<CategoryProvider>(context, listen: false);
 
@@ -89,10 +79,14 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     });
 
     try {
-      String imageUrl = _urlController.text.trim();
+      String imageUrl = widget.categoryToEdit?.imageUrl ?? '';
+      String? oldImageUrl;
 
-      // If user picked a new file, upload to main/<categoryName>/<categoryName>_<timestamp>.jpg
+      // If user picked a new file, upload to Firebase Storage
       if (_pickedImageFile != null) {
+        if (isEditing && imageUrl.isNotEmpty) {
+          oldImageUrl = imageUrl;
+        }
         imageUrl = await FirebaseStorageService.uploadCategoryImage(
           imageFile: _pickedImageFile,
           categoryName: categoryName,
@@ -104,13 +98,13 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
         ok = await catProvider.editCategory(
           id: widget.categoryToEdit!.id,
           name: categoryName,
-          parentId: _selectedMainCategory?.id,
+          parentId: null,
           imageUrl: imageUrl,
         );
       } else {
         ok = await catProvider.addCategory(
           name: categoryName,
-          parentId: _selectedMainCategory?.id,
+          parentId: null,
           imageUrl: imageUrl,
         );
       }
@@ -118,6 +112,13 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
       if (!mounted) return;
 
       if (ok) {
+        // Delete the old replaced image from Firebase Storage since the new one successfully saved
+        if (oldImageUrl != null && oldImageUrl.isNotEmpty) {
+          await FirebaseStorageService.deleteImage(oldImageUrl);
+        }
+
+        if (!mounted) return;
+
         CustomDialog.showSuccessSnackBar(
           context,
           isEditing
@@ -143,11 +144,6 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final catProvider = Provider.of<CategoryProvider>(context);
-    final mainCats = catProvider.mainCategories
-        .where((c) => c.id != widget.categoryToEdit?.id)
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'تعديل الفئة' : 'إضافة فئة جديدة'),
@@ -171,29 +167,6 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                 prefixIcon: Icons.category_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم الفئة' : null,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<CategoryModel?>(
-                value: _selectedMainCategory,
-                decoration: const InputDecoration(
-                  labelText: 'الفئة الرئيسية (اتركه فارغاً إذا كانت فئة أصلية)',
-                  prefixIcon: Icon(Icons.account_tree_outlined),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('فئة رئيسية أصلية'),
-                  ),
-                  ...mainCats.map((cat) => DropdownMenuItem(
-                        value: cat,
-                        child: Text(cat.name),
-                      )),
-                ],
-                onChanged: (val) {
-                  setState(() {
-                    _selectedMainCategory = val;
-                  });
-                },
-              ),
               const SizedBox(height: 24),
               Text(
                 'صورة الفئة (تخزن في المجلد main/اسم_الفئة/):',
@@ -201,9 +174,9 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
               ),
               const SizedBox(height: 10),
               GestureDetector(
-                onTap: _pickImage,
+                onTap: _isUploading ? null : _pickImage,
                 child: Container(
-                  height: 140,
+                  height: 160,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withAlpha(15),
                     borderRadius: BorderRadius.circular(16),
@@ -216,10 +189,10 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                               ? Image.memory(_pickedImageFile, fit: BoxFit.cover, width: double.infinity)
                               : Image.file(_pickedImageFile, fit: BoxFit.cover, width: double.infinity),
                         )
-                      : (_urlController.text.isNotEmpty
+                      : (widget.categoryToEdit != null && widget.categoryToEdit!.imageUrl.isNotEmpty
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                              child: Image.network(_urlController.text, fit: BoxFit.cover, width: double.infinity),
+                              child: Image.network(widget.categoryToEdit!.imageUrl, fit: BoxFit.cover, width: double.infinity),
                             )
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -241,13 +214,6 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                   style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700),
                 ),
               ],
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _urlController,
-                labelText: 'أو ادخل رابط صورة مباشر (URL)',
-                hintText: 'https://example.com/image.jpg',
-                prefixIcon: Icons.link_outlined,
-              ),
               const SizedBox(height: 32),
               CustomButton(
                 text: isEditing ? 'حفظ التعديلات' : 'إضافة الفئة',

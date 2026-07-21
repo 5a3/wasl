@@ -12,6 +12,18 @@ import '../products/admin_products_screen.dart';
 import '../reports/admin_reports_screen.dart';
 import '../sub_admins/admin_sub_admins_screen.dart';
 
+class DashboardTab {
+  final Widget screen;
+  final BottomNavigationBarItem item;
+  final String? requiredPermission;
+
+  const DashboardTab({
+    required this.screen,
+    required this.item,
+    this.requiredPermission,
+  });
+}
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -22,15 +34,6 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    AdminOrdersScreen(),
-    AdminCategoriesScreen(),
-    AdminProductsScreen(),
-    AdminDeliveryZonesScreen(),
-    AdminReportsScreen(),
-    AdminSubAdminsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AdminAuthProvider>(context);
@@ -38,6 +41,98 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final orderProvider = Provider.of<OrderManagementProvider>(context);
     final admin = authProvider.currentAdmin;
     final activeOrdersCount = orderProvider.activeOrders.length;
+
+    // Define all available tabs and map them to their required permissions
+    final List<DashboardTab> allTabs = [
+      DashboardTab(
+        screen: const AdminOrdersScreen(),
+        requiredPermission: 'manage_orders',
+        item: BottomNavigationBarItem(
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.receipt_long_outlined),
+              if (activeOrdersCount > 0)
+                Positioned(
+                  right: -6,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$activeOrdersCount',
+                      style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          activeIcon: const Icon(Icons.receipt_long, color: AppColors.primary),
+          label: 'الطلبات',
+        ),
+      ),
+      const DashboardTab(
+        screen: AdminCategoriesScreen(),
+        requiredPermission: 'manage_products',
+        item: BottomNavigationBarItem(
+          icon: Icon(Icons.category_outlined),
+          activeIcon: Icon(Icons.category, color: AppColors.primary),
+          label: 'الفئات',
+        ),
+      ),
+      const DashboardTab(
+        screen: AdminProductsScreen(),
+        requiredPermission: 'manage_products',
+        item: BottomNavigationBarItem(
+          icon: Icon(Icons.fastfood_outlined),
+          activeIcon: Icon(Icons.fastfood, color: AppColors.primary),
+          label: 'المنتجات',
+        ),
+      ),
+      const DashboardTab(
+        screen: AdminDeliveryZonesScreen(),
+        requiredPermission: 'manage_orders',
+        item: BottomNavigationBarItem(
+          icon: Icon(Icons.local_shipping_outlined),
+          activeIcon: Icon(Icons.local_shipping, color: AppColors.primary),
+          label: 'التوصيل',
+        ),
+      ),
+      const DashboardTab(
+        screen: AdminReportsScreen(),
+        requiredPermission: 'view_reports',
+        item: BottomNavigationBarItem(
+          icon: Icon(Icons.bar_chart_outlined),
+          activeIcon: Icon(Icons.bar_chart, color: AppColors.primary),
+          label: 'التقارير',
+        ),
+      ),
+      const DashboardTab(
+        screen: AdminSubAdminsScreen(),
+        requiredPermission: 'manage_admins',
+        item: BottomNavigationBarItem(
+          icon: Icon(Icons.people_alt_outlined),
+          activeIcon: Icon(Icons.people_alt, color: AppColors.primary),
+          label: 'المدراء',
+        ),
+      ),
+    ];
+
+    // Filter tabs based on admin role and permissions
+    final List<DashboardTab> allowedTabs = allTabs.where((tab) {
+      if (admin == null) return false;
+      if (admin.isSuperAdmin) return true;
+      if (tab.requiredPermission == null) return true;
+      return admin.permissions.contains(tab.requiredPermission);
+    }).toList();
+
+    // Prevent index out of bounds if permissions dynamically change
+    if (_currentIndex >= allowedTabs.length) {
+      _currentIndex = 0;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -72,91 +167,64 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: IndexedStack(
-          key: ValueKey<int>(_currentIndex),
-          index: _currentIndex,
-          children: _screens,
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(15),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: Colors.grey.shade600,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
-          unselectedLabelStyle: AppFonts.cairoFont(fontSize: 10),
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          items: [
-            BottomNavigationBarItem(
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.receipt_long_outlined),
-                  if (activeOrdersCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.danger,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '$activeOrdersCount',
-                          style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+      body: allowedTabs.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 60, color: AppColors.danger),
+                    const SizedBox(height: 16),
+                    Text(
+                      'لا توجد صلاحيات!',
+                      style: AppFonts.cairoFont(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.danger),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'حسابك لا يمتلك أي صلاحيات حالياً. يرجى التواصل مع المدير العام لتفعيل حسابك.',
+                      style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: IndexedStack(
+                key: ValueKey<int>(_currentIndex),
+                index: _currentIndex,
+                children: allowedTabs.map((t) => t.screen).toList(),
+              ),
+            ),
+      bottomNavigationBar: allowedTabs.isEmpty
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(15),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
                 ],
               ),
-              activeIcon: const Icon(Icons.receipt_long, color: AppColors.primary),
-              label: 'الطلبات',
+              child: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                selectedItemColor: AppColors.primary,
+                unselectedItemColor: Colors.grey.shade600,
+                type: BottomNavigationBarType.fixed,
+                selectedLabelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
+                unselectedLabelStyle: AppFonts.cairoFont(fontSize: 10),
+                onTap: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                items: allowedTabs.map((t) => t.item).toList(),
+              ),
             ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.category_outlined),
-              activeIcon: Icon(Icons.category, color: AppColors.primary),
-              label: 'الفئات',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.fastfood_outlined),
-              activeIcon: Icon(Icons.fastfood, color: AppColors.primary),
-              label: 'المنتجات',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.local_shipping_outlined),
-              activeIcon: Icon(Icons.local_shipping, color: AppColors.primary),
-              label: 'التوصيل',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined),
-              activeIcon: Icon(Icons.bar_chart, color: AppColors.primary),
-              label: 'التقارير',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.people_alt_outlined),
-              activeIcon: Icon(Icons.people_alt, color: AppColors.primary),
-              label: 'المدراء',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

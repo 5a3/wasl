@@ -131,6 +131,7 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_delivery_zones',
         backgroundColor: AppColors.primary,
         onPressed: () => _showAddOrEditZoneDialog(),
         icon: const Icon(Icons.add, color: Colors.white),

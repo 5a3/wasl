@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_dialog.dart';
-import '../../../core/widgets/loading_indicator.dart';
+import '../../../core/widgets/custom_cached_image.dart';
+import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/category_model.dart';
 import '../../providers/category_provider.dart';
 import 'add_edit_category_screen.dart';
@@ -64,6 +65,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_categories',
         backgroundColor: AppColors.primary,
         onPressed: _openAddCategory,
         icon: const Icon(Icons.add, color: Colors.white),
@@ -101,7 +103,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               ),
               Expanded(
                 child: catProvider.isLoading
-                    ? const LoadingIndicator(message: 'جاري جلب الفئات...')
+                    ? const ShimmerLoadingList(itemCount: 8, height: 55)
                     : catProvider.categories.isEmpty
                         ? Center(
                             child: Text(
@@ -117,13 +119,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: AppColors.primary.withAlpha(20),
-                                    backgroundImage: cat.imageUrl.isNotEmpty ? NetworkImage(cat.imageUrl) : null,
-                                    child: cat.imageUrl.isEmpty
-                                        ? Text(
-                                            cat.name.substring(0, 1),
-                                            style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
+                                  leading: CustomCachedImage(
+                                    imageUrl: cat.imageUrl,
+                                    width: 50,
+                                    height: 50,
+                                    borderRadius: BorderRadius.circular(25),
+                                    errorWidget: cat.imageUrl.isEmpty
+                                        ? CircleAvatar(
+                                            backgroundColor: AppColors.primary.withAlpha(20),
+                                            child: Text(
+                                              cat.name.substring(0, 1),
+                                              style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
+                                            ),
                                           )
                                         : null,
                                   ),

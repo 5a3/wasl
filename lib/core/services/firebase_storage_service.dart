@@ -82,4 +82,15 @@ class FirebaseStorageService {
       throw 'فشل رفع صورة المنتج: ${e.toString()}';
     }
   }
+
+  /// Delete image from Firebase Storage if it exists
+  static Future<void> deleteImage(String imageUrl) async {
+    if (imageUrl.isEmpty || !imageUrl.startsWith('http')) return;
+    try {
+      final ref = _storage.refFromURL(imageUrl);
+      await ref.delete();
+    } catch (e) {
+      debugPrint('فشل حذف الصورة القديمة: $e');
+    }
+  }
 }

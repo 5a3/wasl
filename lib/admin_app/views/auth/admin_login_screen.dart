@@ -66,17 +66,11 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             children: [
               const SizedBox(height: 20),
               Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.admin_panel_settings,
-                    size: 70,
-                    color: AppColors.primary,
-                  ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 24),
