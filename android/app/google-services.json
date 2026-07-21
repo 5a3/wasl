@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "317958059758",
+    "project_id": "wasl-cdcb6",
+    "storage_bucket": "wasl-cdcb6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:317958059758:android:74aea47489f9b7c7bca5ff",
+        "android_client_info": {
+          "package_name": "com.example.wasl"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaiHxvaYSYQ_GwIev6WbaUQlry-wW__g8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
