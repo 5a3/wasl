@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -20,18 +21,11 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    MenuScreen(),
-    FavoritesScreen(),
-    CartScreen(),
-    CustomerOrdersScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -79,53 +73,151 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
-        unselectedLabelStyle: AppFonts.cairoFont(fontSize: 10),
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+      body: BottomBar(
+        barColor: isDark ? Colors.grey.shade900 : AppColors.primary,
+        borderRadius: BorderRadius.circular(30),
+        width: MediaQuery.of(context).size.width - 32,
+        hideOnScroll: true,
+        body: (context, scrollController) {
+          switch (_currentIndex) {
+            case 0:
+              return MenuScreen(scrollController: scrollController);
+            case 1:
+              return FavoritesScreen(scrollController: scrollController);
+            case 2:
+              return const CartScreen();
+            case 3:
+              return CustomerOrdersScreen(scrollController: scrollController);
+            case 4:
+              return const ProfileScreen();
+            default:
+              return MenuScreen(scrollController: scrollController);
+          }
         },
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            activeIcon: Icon(Icons.restaurant_menu),
-            label: 'القائمة',
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.restaurant_menu_outlined, Icons.restaurant_menu, 'القائمة'),
+              _buildNavItem(1, Icons.favorite_outline, Icons.favorite, 'المفضلة'),
+              _buildCartNavItem(cartProvider),
+              _buildNavItem(3, Icons.delivery_dining_outlined, Icons.delivery_dining, 'طلباتي'),
+              _buildNavItem(4, Icons.person_outline, Icons.person, 'حسابي'),
+            ],
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_outline),
-            activeIcon: Icon(Icons.favorite),
-            label: 'المفضلة',
-          ),
-          BottomNavigationBarItem(
-            icon: Badge(
-              isLabelVisible: cartProvider.itemCount > 0,
-              label: Text('${cartProvider.itemCount}'),
-              child: const Icon(Icons.shopping_cart_outlined),
+        ),
+      ),
+    );
+  }
+
+  /// Builds navigation item for general tabs with dynamic theme color contrasts
+  Widget _buildNavItem(int index, IconData outlineIcon, IconData activeIcon, String label) {
+    final isSelected = _currentIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color selectedColor = isDark ? AppColors.primary : Colors.white;
+    final Color unselectedColor = isDark ? Colors.grey.shade400 : Colors.white.withAlpha(170);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? activeIcon : outlineIcon,
+              color: isSelected ? selectedColor : unselectedColor,
+              size: 22,
             ),
-            activeIcon: const Icon(Icons.shopping_cart),
-            label: 'السلة',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.delivery_dining_outlined),
-            activeIcon: Icon(Icons.delivery_dining),
-            label: 'طلباتي',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'حسابي',
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: AppFonts.cairoFont(
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? selectedColor : unselectedColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Special navigation item for the Cart with badge overlay
+  Widget _buildCartNavItem(CartProvider cartProvider) {
+    final isSelected = _currentIndex == 2;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color selectedColor = isDark ? AppColors.primary : Colors.white;
+    final Color unselectedColor = isDark ? Colors.grey.shade400 : Colors.white.withAlpha(170);
+
+    final Color badgeBgColor = isDark ? AppColors.primary : Colors.white;
+    final Color badgeTextColor = isDark ? Colors.white : AppColors.primary;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = 2;
+        });
+      },
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  isSelected ? Icons.shopping_cart : Icons.shopping_cart_outlined,
+                  color: isSelected ? selectedColor : unselectedColor,
+                  size: 22,
+                ),
+                if (cartProvider.itemCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: badgeBgColor,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                      child: Text(
+                        '${cartProvider.itemCount}',
+                        textAlign: TextAlign.center,
+                        style: AppFonts.cairoFont(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: badgeTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'السلة',
+              style: AppFonts.cairoFont(
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? selectedColor : unselectedColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

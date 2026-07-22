@@ -24,6 +24,19 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<CustomerAuthProvider>(context, listen: false);
+      if (authProvider.currentCustomer != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CustomerHomeScreen()),
+        );
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _identifierController.dispose();
     _passwordController.dispose();

@@ -63,9 +63,17 @@ void main() async {
         ChangeNotifierProxyProvider<CustomerAuthProvider, CartProvider>(
           create: (_) => CartProvider(),
           update: (_, auth, cart) {
-            // Automatically clear the cart when no user is logged in
-            if (auth.currentCustomer == null && cart != null) {
-              cart.clearCart();
+            final customer = auth.currentCustomer;
+            if (cart != null) {
+              if (customer != null) {
+                if (cart.currentCustomerId != customer.id) {
+                  cart.loadCart(customer.id);
+                }
+              } else {
+                if (cart.currentCustomerId != null) {
+                  cart.clearCart();
+                }
+              }
             }
             return cart ?? CartProvider();
           },

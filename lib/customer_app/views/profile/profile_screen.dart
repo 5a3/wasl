@@ -94,6 +94,7 @@ class ProfileScreen extends StatelessWidget {
                 }
               },
             ),
+            const SizedBox(height: 80), // Avoid floating bottom bar overlapping
           ],
         ),
       ),

@@ -15,7 +15,8 @@ import '../../providers/favorite_provider.dart';
 import 'product_details_screen.dart';
 
 class MenuScreen extends StatefulWidget {
-  const MenuScreen({super.key});
+  final ScrollController? scrollController;
+  const MenuScreen({super.key, this.scrollController});
 
   @override
   State<MenuScreen> createState() => _MenuScreenState();
@@ -112,6 +113,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         ),
                       )
                     : ListView.builder(
+                        controller: widget.scrollController,
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         itemCount: filteredProducts.length,

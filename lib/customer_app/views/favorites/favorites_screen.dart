@@ -8,7 +8,8 @@ import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
 
 class FavoritesScreen extends StatelessWidget {
-  const FavoritesScreen({super.key});
+  final ScrollController? scrollController;
+  const FavoritesScreen({super.key, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +42,7 @@ class FavoritesScreen extends StatelessWidget {
               ),
             )
           : ListView.builder(
+              controller: scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: favoriteProducts.length,
               itemBuilder: (ctx, index) {

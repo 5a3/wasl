@@ -247,6 +247,7 @@ class _CartScreenState extends State<CartScreen> {
                     text: 'تأكيد وإرسال الطلب الآن 🚀',
                     onPressed: _placeOrder,
                   ),
+                  const SizedBox(height: 80), // Spacing to avoid overlap with floating bottom bar
                 ],
               ),
             ),

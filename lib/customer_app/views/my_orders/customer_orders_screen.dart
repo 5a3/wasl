@@ -9,7 +9,8 @@ import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_order_provider.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
-  const CustomerOrdersScreen({super.key});
+  final ScrollController? scrollController;
+  const CustomerOrdersScreen({super.key, this.scrollController});
 
   @override
   State<CustomerOrdersScreen> createState() => _CustomerOrdersScreenState();
@@ -249,6 +250,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
     if (screenWidth < 750) {
       return ListView.builder(
+        controller: widget.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: orders.length,
