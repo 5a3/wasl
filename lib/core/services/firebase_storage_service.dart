@@ -83,6 +83,43 @@ class FirebaseStorageService {
     }
   }
 
+  /// Upload Ad Image to: `ads/<ad_title>_<timestamp>.jpg`
+  static Future<String> uploadAdImage({
+    required dynamic imageFile, // File or Uint8List or URL String
+    required String adTitle,
+  }) async {
+    if (imageFile is String && imageFile.startsWith('http')) {
+      return imageFile; // If user entered a direct web URL
+    }
+
+    try {
+      final cleanTitle = adTitle.trim().replaceAll(RegExp(r'[^\w\s\u0600-\u06FF]'), '_');
+      final fileName = '${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = 'ads/$fileName';
+
+      final ref = _storage.ref().child(storagePath);
+      UploadTask uploadTask;
+
+      if (kIsWeb && imageFile is Uint8List) {
+        uploadTask = ref.putData(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else if (imageFile is File) {
+        uploadTask = ref.putFile(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else {
+        throw 'نوع الملف غير مدعوم للرفع';
+      }
+
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found' || e.message?.contains('404') == true) {
+        throw 'لم يتم تفعيل Firebase Storage في مشروع wasl-cdcb6! يرجى إنشاؤها وتعديل الـ Rules في Firebase Console.';
+      }
+      throw 'خطأ رفع صورة الإعلان: ${e.message}';
+    } catch (e) {
+      throw 'فشل رفع صورة الإعلان: ${e.toString()}';
+    }
+  }
+
   /// Delete image from Firebase Storage if it exists
   static Future<void> deleteImage(String imageUrl) async {
     if (imageUrl.isEmpty || !imageUrl.startsWith('http')) return;

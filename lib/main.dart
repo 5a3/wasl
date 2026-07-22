@@ -20,6 +20,7 @@ import 'admin_app/providers/category_provider.dart';
 import 'admin_app/providers/delivery_zone_provider.dart';
 import 'admin_app/providers/order_management_provider.dart';
 import 'admin_app/providers/product_provider.dart';
+import 'admin_app/providers/ad_provider.dart';
 import 'admin_app/views/auth/admin_login_screen.dart';
 
 // Customer App Providers & Views
@@ -57,9 +58,30 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DeliveryZoneProvider()),
         ChangeNotifierProvider(create: (_) => OrderManagementProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => AdProvider()),
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => FavoriteProvider()),
+        ChangeNotifierProxyProvider<CustomerAuthProvider, CartProvider>(
+          create: (_) => CartProvider(),
+          update: (_, auth, cart) {
+            // Automatically clear the cart when no user is logged in
+            if (auth.currentCustomer == null && cart != null) {
+              cart.clearCart();
+            }
+            return cart ?? CartProvider();
+          },
+        ),
+        ChangeNotifierProxyProvider<CustomerAuthProvider, FavoriteProvider>(
+          create: (_) => FavoriteProvider(),
+          update: (_, auth, favorite) {
+            final customer = auth.currentCustomer;
+            if (customer != null) {
+              favorite?.loadFavorites(customer.id);
+            } else {
+              favorite?.clearFavorites();
+            }
+            return favorite ?? FavoriteProvider();
+          },
+        ),
         ChangeNotifierProvider(create: (_) => CustomerOrderProvider()),
       ],
       child: const WaslAppMain(),
@@ -81,10 +103,7 @@ class WaslAppMain extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       locale: const Locale('ar', 'YE'),
-      supportedLocales: const [
-        Locale('ar', 'YE'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('ar', 'YE'), Locale('en', 'US')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -111,7 +130,9 @@ class AppLauncherChooserScreen extends StatelessWidget {
         title: const Text(AppConstants.appName),
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
             onPressed: () {
               themeProvider.toggleTheme(!themeProvider.isDarkMode);
             },
@@ -129,11 +150,7 @@ class AppLauncherChooserScreen extends StatelessWidget {
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.fastfood,
-                size: 60,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.fastfood, size: 60, color: Colors.white),
             ),
             const SizedBox(height: 24),
             Text(
@@ -159,7 +176,9 @@ class AppLauncherChooserScreen extends StatelessWidget {
               backgroundColor: AppColors.primary,
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CustomerLoginScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const CustomerLoginScreen(),
+                  ),
                 );
               },
             ),

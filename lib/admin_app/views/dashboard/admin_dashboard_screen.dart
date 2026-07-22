@@ -11,6 +11,7 @@ import '../orders/admin_orders_screen.dart';
 import '../products/admin_products_screen.dart';
 import '../reports/admin_reports_screen.dart';
 import '../sub_admins/admin_sub_admins_screen.dart';
+import '../ads/admin_ads_screen.dart';
 
 class DashboardTab {
   final Widget screen;
@@ -42,7 +43,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final admin = authProvider.currentAdmin;
     final activeOrdersCount = orderProvider.activeOrders.length;
 
-    // Define all available tabs and map them to their required permissions
+    // Bottom Navigation tabs (simplified to 4 tabs as requested)
     final List<DashboardTab> allTabs = [
       DashboardTab(
         screen: const AdminOrdersScreen(),
@@ -101,24 +102,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           label: 'التوصيل',
         ),
       ),
-      const DashboardTab(
-        screen: AdminReportsScreen(),
-        requiredPermission: 'view_reports',
-        item: BottomNavigationBarItem(
-          icon: Icon(Icons.bar_chart_outlined),
-          activeIcon: Icon(Icons.bar_chart, color: AppColors.primary),
-          label: 'التقارير',
-        ),
-      ),
-      const DashboardTab(
-        screen: AdminSubAdminsScreen(),
-        requiredPermission: 'manage_admins',
-        item: BottomNavigationBarItem(
-          icon: Icon(Icons.people_alt_outlined),
-          activeIcon: Icon(Icons.people_alt, color: AppColors.primary),
-          label: 'المدراء',
-        ),
-      ),
     ];
 
     // Filter tabs based on admin role and permissions
@@ -166,6 +149,109 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             },
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            // Drawer Header displaying Admin Profile Info
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(
+                  admin?.isSuperAdmin == true ? Icons.stars : Icons.admin_panel_settings,
+                  size: 40,
+                  color: AppColors.primary,
+                ),
+              ),
+              accountName: Text(
+                admin?.fullName ?? 'مدير النظام',
+                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+              ),
+              accountEmail: Text(
+                admin?.isSuperAdmin == true ? 'مدير عام بالنظام 👑' : 'مدير بصلاحيات محدودة 🛠️',
+                style: AppFonts.cairoFont(color: Colors.white70, fontSize: 11),
+              ),
+            ),
+
+            // Drawer Items with permission checks
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'الواجهات الإدارية الإضافية',
+                      style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                  ),
+                  const Divider(),
+
+                  // Option 1: Reports & Analytics
+                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('view_reports')))
+                    ListTile(
+                      leading: const Icon(Icons.bar_chart_outlined, color: AppColors.primary),
+                      title: Text('التقارير والإحصائيات 📊', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: Text('عرض الإيرادات والتحليلات اليومية', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminReportsScreen()),
+                        );
+                      },
+                    ),
+
+                  // Option 2: Manage Sub-Admins
+                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_admins')))
+                    ListTile(
+                      leading: const Icon(Icons.people_alt_outlined, color: AppColors.primary),
+                      title: Text('إدارة المدراء والصلاحيات 👥', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: Text('إضافة وتعديل المشرفين وصلاحياتهم', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminSubAdminsScreen()),
+                        );
+                      },
+                    ),
+
+                  // Option 3: Manage Ads & Notifications
+                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_products')))
+                    ListTile(
+                      leading: const Icon(Icons.campaign_outlined, color: AppColors.primary),
+                      title: Text('إدارة الإعلانات والتنبيهات 📢', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: Text('إضافة عروض وتنبيهات في شريط العملاء', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminAdsScreen()),
+                        );
+                      },
+                    ),
+                  
+                  const Divider(),
+                ],
+              ),
+            ),
+
+            // Logout row at the bottom of the Drawer
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.danger),
+              title: Text('تسجيل الخروج', style: AppFonts.cairoFont(fontSize: 13, color: AppColors.danger, fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.of(context).pop(); // Close drawer
+                await authProvider.logout();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
       body: allowedTabs.isEmpty
           ? Center(

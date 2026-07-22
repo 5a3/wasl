@@ -28,13 +28,15 @@ class CustomerOrderProvider extends ChangeNotifier {
     _myOrdersSubscription = _firestore
         .collection(FirebaseConstants.collectionOrders)
         .where('customerId', isEqualTo: customerId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .listen(
           (snapshot) {
             final allOrders = snapshot.docs
                 .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
                 .toList();
+
+            // Sort locally in memory to avoid requiring composite indexes on Firestore
+            allOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
             _myActiveOrders = allOrders.where((o) =>
                 o.status == AppConstants.statusPending ||

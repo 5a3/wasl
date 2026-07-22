@@ -8,6 +8,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../shared/models/delivery_zone_model.dart';
+import '../../../shared/models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_order_provider.dart';
@@ -252,16 +253,16 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  dynamic dynamicProduct(String id, String name, double price, String img) {
-    return FakeProduct(id: id, name: name, price: price, img: img);
+  ProductModel dynamicProduct(String id, String name, double price, String img) {
+    return ProductModel(
+      id: id,
+      name: name,
+      description: '',
+      price: price,
+      mainCategoryId: '',
+      subCategoryId: '',
+      images: [img],
+      createdAt: DateTime.now(),
+    );
   }
-}
-
-class FakeProduct {
-  final String id;
-  final String name;
-  final double price;
-  final String img;
-  FakeProduct({required this.id, required this.name, required this.price, required this.img});
-  List<String> get images => [img];
 }

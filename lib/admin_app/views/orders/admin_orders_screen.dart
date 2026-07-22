@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -17,15 +18,24 @@ class AdminOrdersScreen extends StatefulWidget {
   State<AdminOrdersScreen> createState() => _AdminOrdersScreenState();
 }
 
-class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
+  int _selectedTab = 0; // 0 = Active, 1 = Completed
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    
+    // Set up scroll controller for lazy loading completed orders
+    _scrollController.addListener(() {
+      final provider = Provider.of<OrderManagementProvider>(context, listen: false);
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        provider.fetchNextCompletedPage();
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<OrderManagementProvider>(context, listen: false).listenToAllOrders();
     });
@@ -33,20 +43,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
-  }
-
-  List<OrderModel> _filterOrders(List<OrderModel> orders) {
-    if (_searchQuery.trim().isEmpty) return orders;
-    final query = _searchQuery.trim().toLowerCase();
-    return orders.where((o) =>
-      o.orderNumber.toLowerCase().contains(query) ||
-      o.customerName.toLowerCase().contains(query) ||
-      o.customerPhone.toLowerCase().contains(query) ||
-      o.deliveryAddress.toLowerCase().contains(query)
-    ).toList();
   }
 
   void _showReceipt(OrderModel order) {
@@ -56,121 +55,90 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     );
   }
 
+  void _deleteOrderConfirm(OrderModel order, OrderManagementProvider provider) async {
+    final confirm = await CustomDialog.showConfirmDialog(
+      context: context,
+      title: 'حذف الطلب نهائياً',
+      message: 'هل أنت متأكد من حذف الطلب رقم #${order.orderNumber} بشكل نهائي من النظام؟ لا يمكن التراجع عن هذا الإجراء.',
+      confirmText: 'حذف الآن',
+      confirmColor: AppColors.danger,
+    );
+    if (confirm == true) {
+      final ok = await provider.deleteOrder(order.id);
+      if (ok && mounted) {
+        CustomDialog.showSuccessSnackBar(context, 'تم حذف الطلب بنجاح 🗑️');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderManagementProvider>(context);
+    final isSearching = _searchQuery.trim().isNotEmpty;
 
     return Scaffold(
       body: Column(
         children: [
-          // Search Bar Header
+          // Responsive Search Bar Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
             child: TextField(
               controller: _searchController,
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
                 });
+                orderProvider.searchOrders(val);
               },
               decoration: InputDecoration(
-                hintText: 'ابحث برقم الطلب، اسم العميل، رقم الهاتف أو العنوان...',
+                hintText: 'ابحث برقم الطلب، الهاتف، أو الاسم...',
                 prefixIcon: const Icon(Icons.search, color: AppColors.primary),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
+                          orderProvider.clearSearch();
                           setState(() {
                             _searchQuery = '';
                           });
                         },
                       )
                     : null,
+                filled: true,
+                fillColor: Theme.of(context).cardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withAlpha(40)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withAlpha(20)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
               ),
             ),
           ),
 
-          // Custom Animated Tab Container Header
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: AppColors.primary,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(50),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: AppColors.primary,
-              labelStyle: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 13),
-              unselectedLabelStyle: AppFonts.cairoFont(fontWeight: FontWeight.w600, fontSize: 13),
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Flexible(
-                        child: Text('الطلبات المباشرة ⚡', overflow: TextOverflow.ellipsis),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(50),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${orderProvider.activeOrders.length}',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Flexible(
-                        child: Text('سجل الطلبات 📦', overflow: TextOverflow.ellipsis),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(50),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${orderProvider.completedOrders.length}',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Custom sliding segmented pill selector (iOS style switch)
+          if (!isSearching) _buildCustomSegmentedControl(orderProvider),
 
+          // Main View Logic (Search results vs custom tabs switch)
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildActiveOrdersList(orderProvider),
-                _buildCompletedOrdersList(orderProvider),
-              ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+              child: isSearching
+                  ? _buildSearchResultsView(orderProvider)
+                  : (_selectedTab == 0
+                      ? _buildActiveOrdersTab(orderProvider)
+                      : _buildCompletedOrdersTab(orderProvider)),
             ),
           ),
         ],
@@ -178,22 +146,217 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     );
   }
 
-  Widget _buildActiveOrdersList(OrderManagementProvider provider) {
+  /// Gorgeous sliding pill segment control
+  Widget _buildCustomSegmentedControl(OrderManagementProvider orderProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          // Tab 1: Active Orders
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = 0;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 0 ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _selectedTab == 0
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withAlpha(30),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.electric_bolt,
+                      size: 16,
+                      color: _selectedTab == 0 ? Colors.white : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'الطلبات المباشرة',
+                      style: AppFonts.cairoFont(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedTab == 0 ? Colors.white : (isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 0 ? Colors.white.withAlpha(50) : (isDark ? AppColors.darkSurfaceLight : Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${orderProvider.activeOrders.length}',
+                        style: AppFonts.cairoFont(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _selectedTab == 0 ? Colors.white : (isDark ? AppColors.darkTextPrimary : Colors.grey.shade800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Tab 2: Completed History
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = 1;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 1 ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _selectedTab == 1
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withAlpha(30),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.history,
+                      size: 16,
+                      color: _selectedTab == 1 ? Colors.white : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'سجل الطلبات',
+                      style: AppFonts.cairoFont(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedTab == 1 ? Colors.white : (isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 1 ? Colors.white.withAlpha(50) : (isDark ? AppColors.darkSurfaceLight : Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        orderProvider.isLoadingCompleted && orderProvider.completedOrders.isEmpty
+                            ? '...'
+                            : '${orderProvider.completedOrders.length}',
+                        style: AppFonts.cairoFont(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _selectedTab == 1 ? Colors.white : (isDark ? AppColors.darkTextPrimary : Colors.grey.shade800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsView(OrderManagementProvider provider) {
+    if (provider.isSearching) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: 12),
+            Text('جاري البحث في قاعدة البيانات...'),
+          ],
+        ),
+      );
+    }
+
+    final results = provider.searchResults;
+
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text(
+              'لا توجد نتائج مطابقة 🔍',
+              style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      key: const ValueKey('searchResultsView'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          child: Text(
+            'نتائج البحث عن "$_searchQuery": (${results.length} طلب)',
+            style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
+          ),
+        ),
+        Expanded(
+          child: _buildResponsiveGrid(results, provider, isCompleted: false),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveOrdersTab(OrderManagementProvider provider) {
     if (provider.isLoadingActive) {
-      return const LoadingIndicator(message: 'جاري الاستماع للطلبات المباشرة الحية...');
+      return const LoadingIndicator(message: 'جاري الاستماع للطلبات النشطة...');
     }
 
-    final filtered = _filterOrders(provider.activeOrders);
-
-    if (filtered.isEmpty) {
+    if (provider.activeOrders.isEmpty) {
       return Center(
+        key: const ValueKey('activeEmpty'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.restaurant_menu_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isNotEmpty ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد طلبات جارية حالياً ⚡',
+              'لا توجد طلبات نشطة حالياً ⚡',
               style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
             ),
           ],
@@ -201,32 +364,31 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (ctx, index) {
-        final order = filtered[index];
-        return _buildOrderCard(order, provider);
+    return RefreshIndicator(
+      key: const ValueKey('activeList'),
+      color: AppColors.primary,
+      onRefresh: () async {
+        provider.listenToActiveOrders();
       },
+      child: _buildResponsiveGrid(provider.activeOrders, provider, isCompleted: false),
     );
   }
 
-  Widget _buildCompletedOrdersList(OrderManagementProvider provider) {
-    if (provider.isLoadingCompleted) {
-      return const LoadingIndicator(message: 'جاري تحميل سجل الطلبات القديمة...');
+  Widget _buildCompletedOrdersTab(OrderManagementProvider provider) {
+    if (provider.isLoadingCompleted && provider.completedOrders.isEmpty) {
+      return const LoadingIndicator(message: 'جاري تحميل سجل الطلبات...');
     }
 
-    final filtered = _filterOrders(provider.completedOrders);
-
-    if (filtered.isEmpty) {
+    if (provider.completedOrders.isEmpty) {
       return Center(
+        key: const ValueKey('completedEmpty'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.history, size: 64, color: Colors.grey),
+            const Icon(Icons.history_toggle_off, size: 64, color: Colors.grey),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isNotEmpty ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات قديمة مكتملة في السجل 📦',
+              'سجل الطلبات فارغ حالياً 📦',
               style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
             ),
           ],
@@ -234,17 +396,82 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (ctx, index) {
-        final order = filtered[index];
-        return _buildOrderCard(order, provider, isCompleted: true);
+    return RefreshIndicator(
+      key: const ValueKey('completedList'),
+      color: AppColors.primary,
+      onRefresh: () async {
+        await provider.refreshCompletedOrders();
       },
+      child: _buildResponsiveGrid(provider.completedOrders, provider, isCompleted: true),
     );
   }
 
-  Widget _buildOrderCard(OrderModel order, OrderManagementProvider provider, {bool isCompleted = false}) {
+  Widget _buildResponsiveGrid(List<OrderModel> orders, OrderManagementProvider provider, {required bool isCompleted}) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+
+    if (screenWidth < 750) {
+      return ListView.builder(
+        controller: isCompleted ? _scrollController : null,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: orders.length + (isCompleted && provider.hasMoreCompleted ? 1 : 0),
+        itemBuilder: (ctx, index) {
+          if (isCompleted && index == orders.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            );
+          }
+          return _buildOrderCard(orders[index], provider);
+        },
+      );
+    } else {
+      final leftColumn = <OrderModel>[];
+      final rightColumn = <OrderModel>[];
+
+      for (int i = 0; i < orders.length; i++) {
+        if (i % 2 == 0) {
+          leftColumn.add(orders[i]);
+        } else {
+          rightColumn.add(orders[i]);
+        }
+      }
+
+      return SingleChildScrollView(
+        controller: isCompleted ? _scrollController : null,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: leftColumn.map((order) => _buildOrderCard(order, provider)).toList(),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    children: rightColumn.map((order) => _buildOrderCard(order, provider)).toList(),
+                  ),
+                ),
+              ],
+            ),
+            if (isCompleted && provider.hasMoreCompleted)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// Refined and styled Order Card
+  Widget _buildOrderCard(OrderModel order, OrderManagementProvider provider) {
     Color statusColor;
     switch (order.status) {
       case AppConstants.statusPending:
@@ -263,135 +490,408 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
         statusColor = AppColors.danger;
     }
 
-    return Card(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      child: InkWell(
+      decoration: BoxDecoration(
+        color: isDark
+            ? Color.alphaBlend(statusColor.withAlpha(15), AppColors.darkSurface)
+            : Color.alphaBlend(statusColor.withAlpha(10), Colors.white),
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _showReceipt(order),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.receipt_long_outlined, color: AppColors.primary, size: 22),
-                      const SizedBox(width: 8),
-                      Text(
-                        'طلب #${order.orderNumber}',
-                        style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
+        border: Border.all(color: statusColor.withAlpha(70), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 20 : 4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status Strip Accent
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: Order Number & (Status Badge + Delete)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.receipt_long, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          'طلب #${order.orderNumber}',
+                          style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: statusColor.withAlpha(20),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: statusColor.withAlpha(40)),
+                          ),
+                          child: Text(
+                            order.statusArabic,
+                            style: AppFonts.cairoFont(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Delete Button with tooltip
+                        GestureDetector(
+                          onTap: () => _deleteOrderConfirm(order, provider),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger.withAlpha(15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.delete_outline, color: AppColors.danger, size: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Divider(height: 20, thickness: 0.8),
+
+                // Customer Name, Phone, and Address
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${order.customerName} (${order.customerPhone})',
+                        style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.copy, size: 14, color: AppColors.primary),
+                      tooltip: 'نسخ رقم الهاتف',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: order.customerPhone));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('تم نسخ رقم الهاتف: ${order.customerPhone}'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${order.deliveryZoneName} - ${order.deliveryAddress}',
+                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.content_copy_outlined, size: 14, color: AppColors.primary),
+                      tooltip: 'نسخ العنوان',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: '${order.deliveryZoneName} - ${order.deliveryAddress}'));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم نسخ العنوان'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Slim Stepper
+                _buildStatusStepper(order.status),
+                const SizedBox(height: 12),
+
+                // Meal items clean list
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurfaceLight : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...order.items.map((item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '🍔 ${item.productName}',
+                                    style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.w600),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  'x${item.quantity} (${Formatters.formatCurrency(item.totalPrice)})',
+                                  style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          )),
                     ],
                   ),
+                ),
+
+                // Notes
+                if (order.note != null && order.note!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: statusColor.withAlpha(30),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor.withAlpha(80)),
+                      color: Colors.amber.shade50.withAlpha(isDark ? 25 : 255),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade200.withAlpha(120)),
                     ),
                     child: Text(
-                      order.statusArabic,
-                      style: AppFonts.cairoFont(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: statusColor,
-                      ),
+                      '📝 ملاحظات: ${order.note}',
+                      style: AppFonts.cairoFont(fontSize: 11, color: isDark ? Colors.amber.shade100 : Colors.amber.shade900),
                     ),
                   ),
                 ],
-              ),
-              const Divider(height: 20),
-              Text(
-                'العميل: ${order.customerName} (${order.customerPhone})',
-                style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'منطقة التوصيل: ${order.deliveryZoneName} - العنوان: ${order.deliveryAddress}',
-                style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'الوجبات: ${order.items.map((i) => "${i.productName} (x${i.quantity})").join("، ")}',
-                style: AppFonts.cairoFont(fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    Formatters.formatDateTime(order.createdAt),
-                    style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey),
-                  ),
-                  Text(
-                    'الإجمالي: ${Formatters.formatCurrency(order.totalAmount)}',
-                    style: AppFonts.cairoFont(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    icon: const Icon(Icons.print, size: 16, color: Colors.white),
-                    label: Text(
-                      'استعراض الفاتورة السند 📄',
-                      style: AppFonts.cairoFont(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () => _showReceipt(order),
-                  ),
 
-                  // Dropdown Order Status Changer
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.primary, width: 1.5),
-                      borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 12),
+
+                // Footer Row: Date & Final Total
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      Formatters.formatDateTime(order.createdAt),
+                      style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey),
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: order.status,
-                        style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-                        icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                        items: const [
-                          DropdownMenuItem(value: AppConstants.statusPending, child: Text(AppConstants.statusPendingAr)),
-                          DropdownMenuItem(value: AppConstants.statusAcceptedPreparing, child: Text(AppConstants.statusAcceptedPreparingAr)),
-                          DropdownMenuItem(value: AppConstants.statusDelivering, child: Text(AppConstants.statusDeliveringAr)),
-                          DropdownMenuItem(value: AppConstants.statusDelivered, child: Text(AppConstants.statusDeliveredAr)),
-                          DropdownMenuItem(value: AppConstants.statusCanceled, child: Text(AppConstants.statusCanceledAr)),
-                        ],
-                        onChanged: (newStatus) {
-                          if (newStatus != null && newStatus != order.status) {
-                            _changeStatus(order.id, newStatus, provider);
-                          }
-                        },
+                    Text(
+                      'الإجمالي: ${Formatters.formatCurrency(order.totalAmount)}',
+                      style: AppFonts.cairoFont(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
                       ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20, thickness: 0.8),
+
+                // Action Buttons: Print bill & Dropdown status changer
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.print, size: 14, color: Colors.white),
+                        label: Text(
+                          'طباعة الفاتورة 📄',
+                          style: AppFonts.cairoFont(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () => _showReceipt(order),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Dropdown changer
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.primary.withAlpha(100), width: 1.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: order.status,
+                          style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                          items: const [
+                            DropdownMenuItem(value: AppConstants.statusPending, child: Text(AppConstants.statusPendingAr)),
+                            DropdownMenuItem(value: AppConstants.statusAcceptedPreparing, child: Text(AppConstants.statusAcceptedPreparingAr)),
+                            DropdownMenuItem(value: AppConstants.statusDelivering, child: Text(AppConstants.statusDeliveringAr)),
+                            DropdownMenuItem(value: AppConstants.statusDelivered, child: Text(AppConstants.statusDeliveredAr)),
+                            DropdownMenuItem(value: AppConstants.statusCanceled, child: Text(AppConstants.statusCanceledAr)),
+                          ],
+                          onChanged: (newStatus) {
+                            if (newStatus != null && newStatus != order.status) {
+                              _changeStatus(order.id, newStatus, provider);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Slimmer visual progress stepper
+  Widget _buildStatusStepper(String status) {
+    final steps = [
+      AppConstants.statusPending,
+      AppConstants.statusAcceptedPreparing,
+      AppConstants.statusDelivering,
+      AppConstants.statusDelivered,
+    ];
+
+    int currentStepIndex = steps.indexOf(status);
+    if (status == AppConstants.statusCanceled) {
+      currentStepIndex = 3;
+    }
+
+    return Row(
+      children: List.generate(steps.length, (index) {
+        final isDone = index <= currentStepIndex;
+        final isCurrent = index == currentStepIndex;
+
+        Color stepColor = Colors.grey.shade300;
+        if (isDone) {
+          switch (index) {
+            case 0:
+              stepColor = AppColors.pending;
+              break;
+            case 1:
+              stepColor = AppColors.warning;
+              break;
+            case 2:
+              stepColor = AppColors.info;
+              break;
+            case 3:
+              stepColor = status == AppConstants.statusCanceled ? AppColors.danger : AppColors.success;
+              break;
+          }
+        }
+
+        String stepLabel = '';
+        IconData stepIcon = Icons.circle;
+
+        switch (index) {
+          case 0:
+            stepLabel = 'معلق';
+            stepIcon = Icons.hourglass_empty;
+            break;
+          case 1:
+            stepLabel = 'تحضير';
+            stepIcon = Icons.restaurant;
+            break;
+          case 2:
+            stepLabel = 'توصيل';
+            stepIcon = Icons.delivery_dining;
+            break;
+          case 3:
+            stepLabel = status == AppConstants.statusCanceled ? 'ملغي' : 'مكتمل';
+            stepIcon = status == AppConstants.statusCanceled ? Icons.cancel : Icons.check_circle;
+            break;
+        }
+
+        Color connectorColor = Colors.grey.shade300;
+        if (index < currentStepIndex) {
+          switch (index) {
+            case 0:
+              connectorColor = AppColors.pending;
+              break;
+            case 1:
+              connectorColor = AppColors.warning;
+              break;
+            case 2:
+              connectorColor = AppColors.info;
+              break;
+          }
+        }
+
+        return Expanded(
+          child: Row(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: stepColor.withAlpha(20),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: stepColor, width: 1.5),
+                    ),
+                    child: Icon(stepIcon, size: 10, color: stepColor),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    stepLabel,
+                    style: AppFonts.cairoFont(
+                      fontSize: 8,
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                      color: isCurrent ? stepColor : Colors.grey.shade600,
                     ),
                   ),
                 ],
               ),
+              if (index < steps.length - 1)
+                Expanded(
+                  child: Container(
+                    height: 1.5,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    color: connectorColor,
+                  ),
+                ),
             ],
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -399,12 +899,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> with SingleTicker
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'تعديل حالة الطلب',
-      message: 'هل أنت تأكد من تغيير حالة الطلب الآن؟ عند التوصيل أو الإلغاء سيتم النقل فوراً لسجل الطلبات القديمة.',
+      message: 'هل أنت متأكد من تغيير حالة الطلب؟ سيتم نقل الطلبات المكتملة أو الملغاة فوراً إلى سجل الطلبات القديمة.',
     );
     if (confirm == true) {
       final ok = await provider.updateOrderStatus(orderId, newStatus);
       if (ok && mounted) {
-        CustomDialog.showSuccessSnackBar(context, 'تم تعديل حالة الطلب ونقله بنجاح ⚡');
+        CustomDialog.showSuccessSnackBar(context, 'تم تعديل حالة الطلب بنجاح ⚡');
       }
     }
   }
