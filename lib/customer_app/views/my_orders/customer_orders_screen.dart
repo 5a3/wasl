@@ -393,10 +393,36 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'منطقة التوصيل: ${order.deliveryZoneName} - العنوان: ${order.deliveryAddress}',
-                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        'منطقة التوصيل: ${order.deliveryZoneName}\nالعنوان التفصيلي: ${order.deliveryAddress}',
+                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Contact Phone Details
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.phone_outlined, size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'هاتف التواصل الأساسي: ${order.customerPhone}',
+                            style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade700),
+                          ),
+                          if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'هاتف التواصل البديل: ${order.additionalPhone}',
+                              style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -426,7 +452,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '🍔 ${item.productName}',
+                                    item.productName,
                                     style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.w600),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -438,6 +464,30 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                               ],
                             ),
                           )),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Pricing Breakdown Details
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('مجموع الوجبات:', style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                          Text(Formatters.formatCurrency(order.subtotal), style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('رسوم التوصيل:', style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                          Text(Formatters.formatCurrency(order.deliveryFee), style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -454,7 +504,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                       border: Border.all(color: Colors.amber.shade200.withAlpha(120)),
                     ),
                     child: Text(
-                      '📝 ملاحظاتك: ${order.note}',
+                      'ملاحظات الطلب: ${order.note}',
                       style: AppFonts.cairoFont(fontSize: 11, color: isDark ? Colors.amber.shade100 : Colors.amber.shade900),
                     ),
                   ),

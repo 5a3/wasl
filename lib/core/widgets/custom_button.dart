@@ -27,8 +27,12 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBg = backgroundColor ?? AppColors.primary;
-    final effectiveText = textColor ?? Colors.white;
+    final effectiveBg = onPressed == null
+        ? Colors.grey.shade300
+        : (backgroundColor ?? AppColors.primary);
+    final effectiveText = onPressed == null
+        ? Colors.grey.shade600
+        : (textColor ?? Colors.white);
 
     return SizedBox(
       height: height,

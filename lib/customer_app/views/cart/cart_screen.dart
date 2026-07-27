@@ -22,6 +22,8 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _noteController = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +40,8 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void dispose() {
     _addressController.dispose();
+    _phoneController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -74,12 +78,16 @@ class _CartScreenState extends State<CartScreen> {
       subtotal: cartProvider.subtotal,
       totalAmount: cartProvider.totalAmount,
       deliveryAddress: _addressController.text.trim(),
+      note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+      additionalPhone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
     );
 
     if (!mounted) return;
 
     if (success) {
       cartProvider.clearCart();
+      _phoneController.clear();
+      _noteController.clear();
       CustomDialog.showSuccessSnackBar(
         context,
         'تم إرسال طلبك بنجاح إلى الإدارة! يمكنك متابعة حالة الطلب من شاشة طلباتي.',
@@ -200,6 +208,21 @@ class _CartScreenState extends State<CartScreen> {
                     hintText: 'ادخل اسم الشارع، المعلم، ورقم البيت...',
                     prefixIcon: Icons.location_city_outlined,
                   ),
+                  const SizedBox(height: 14),
+                  CustomTextField(
+                    controller: _phoneController,
+                    labelText: 'رقم هاتف تواصل إضافي (اختياري)',
+                    hintText: 'رقم بديل للمندوب للتواصل عند الحاجة',
+                    keyboardType: TextInputType.phone,
+                    prefixIcon: Icons.phone_enabled_outlined,
+                  ),
+                  const SizedBox(height: 14),
+                  CustomTextField(
+                    controller: _noteController,
+                    labelText: 'ملاحظات وتفاصيل الطلب (اختياري)',
+                    hintText: 'مثال: بدون بصل، صوص زيادة، توصيل سريع...',
+                    prefixIcon: Icons.edit_note_outlined,
+                  ),
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -244,8 +267,8 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   const SizedBox(height: 24),
                   CustomButton(
-                    text: 'تأكيد وإرسال الطلب الآن 🚀',
-                    onPressed: _placeOrder,
+                    text: 'مراجعة وتأكيد الطلب الآن 🚀',
+                    onPressed: () => _showOrderConfirmation(cartProvider),
                   ),
                   const SizedBox(height: 80), // Spacing to avoid overlap with floating bottom bar
                 ],
@@ -264,6 +287,153 @@ class _CartScreenState extends State<CartScreen> {
       subCategoryId: '',
       images: [img],
       createdAt: DateTime.now(),
+    );
+  }
+
+  void _showOrderConfirmation(CartProvider cartProvider) {
+    if (cartProvider.itemList.isEmpty) {
+      CustomDialog.showErrorSnackBar(context, 'السلة فارغة حالياً');
+      return;
+    }
+
+    if (cartProvider.selectedZone == null) {
+      CustomDialog.showErrorSnackBar(context, 'الرجاء اختيار منطقة التوصيل أولاً');
+      return;
+    }
+
+    if (_addressController.text.trim().isEmpty) {
+      CustomDialog.showErrorSnackBar(context, 'الرجاء إدخال مكان توصيل الطلب والعنوان بالتفصيل');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    'تأكيد تفاصيل الطلب النهائي 📋',
+                    style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 10),
+                Text(
+                  'ملخص الوجبات والمنتجات:',
+                  style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...cartProvider.itemList.map((item) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${item.productName} (x${item.quantity})', style: AppFonts.cairoFont(fontSize: 12)),
+                      Text(Formatters.formatCurrency(item.totalPrice), style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                )),
+                const Divider(height: 24),
+                Text(
+                  'تفاصيل التوصيل:',
+                  style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildConfirmDetailRow('المنطقة:', cartProvider.selectedZone!.zoneName),
+                _buildConfirmDetailRow('العنوان:', _addressController.text.trim()),
+                if (_phoneController.text.trim().isNotEmpty)
+                  _buildConfirmDetailRow('هاتف بديل:', _phoneController.text.trim()),
+                if (_noteController.text.trim().isNotEmpty)
+                  _buildConfirmDetailRow('الملاحظات:', _noteController.text.trim()),
+                const Divider(height: 24),
+                
+                // Totals
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('سعر التوصيل:', style: AppFonts.cairoFont(fontSize: 13)),
+                    Text(Formatters.formatCurrency(cartProvider.deliveryFee), style: AppFonts.cairoFont(fontSize: 13)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('المجموع الإجمالي:', style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold)),
+                    Text(
+                      Formatters.formatCurrency(cartProvider.totalAmount),
+                      style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                CustomButton(
+                  text: 'إرسال وتأكيد الطلب النهائي 🚀',
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _placeOrder();
+                  },
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text(
+                      'تعديل وإلغاء ❌',
+                      style: AppFonts.cairoFont(color: AppColors.danger, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildConfirmDetailRow(String label, String val) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(val, style: AppFonts.cairoFont(fontSize: 12)),
+          ),
+        ],
+      ),
     );
   }
 }

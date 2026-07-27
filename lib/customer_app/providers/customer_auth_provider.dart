@@ -66,6 +66,19 @@ class CustomerAuthProvider extends ChangeNotifier {
         return false;
       }
 
+      // Check if phone number already exists
+      final phoneCheck = await _firestore
+          .collection(FirebaseConstants.collectionCustomers)
+          .where('phone', isEqualTo: phone.trim())
+          .get();
+
+      if (phoneCheck.docs.isNotEmpty) {
+        _errorMessage = 'رقم الهاتف هذا مسجل مسبقاً بحساب آخر';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       final docRef = _firestore.collection(FirebaseConstants.collectionCustomers).doc();
       final newCustomer = UserModel(
         id: docRef.id,

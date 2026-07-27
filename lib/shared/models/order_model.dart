@@ -56,6 +56,7 @@ class OrderModel {
   final String status; // pending, accepted_preparing, delivering, delivered, canceled
   final List<OrderItemModel> items;
   final String? note;
+  final String? additionalPhone;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -74,6 +75,7 @@ class OrderModel {
     required this.status,
     required this.items,
     this.note,
+    this.additionalPhone,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -111,6 +113,7 @@ class OrderModel {
       'status': status,
       'items': items.map((x) => x.toMap()).toList(),
       'note': note,
+      'additionalPhone': additionalPhone,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -135,6 +138,7 @@ class OrderModel {
               .toList() ??
           [],
       note: map['note'],
+      additionalPhone: map['additionalPhone'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );

@@ -618,26 +618,86 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        '${order.deliveryZoneName} - ${order.deliveryAddress}',
-                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        'منطقة التوصيل: ${order.deliveryZoneName}\nالعنوان التفصيلي: ${order.deliveryAddress}',
+                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
                       ),
                     ),
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(Icons.content_copy_outlined, size: 14, color: AppColors.primary),
-                      tooltip: 'نسخ العنوان',
+                      tooltip: 'نسخ العنوان الكامل',
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: '${order.deliveryZoneName} - ${order.deliveryAddress}'));
+                        Clipboard.setData(ClipboardData(text: 'المنطقة: ${order.deliveryZoneName} - العنوان: ${order.deliveryAddress}'));
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('تم نسخ العنوان'),
+                            content: Text('تم نسخ العنوان الكامل'),
                             duration: Duration(seconds: 1),
                           ),
                         );
                       },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Contact Phone Details
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.phone_outlined, size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'هاتف التواصل الأساسي: ${order.customerPhone}',
+                                style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade700),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: order.customerPhone));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('تم نسخ الهاتف الأساسي: ${order.customerPhone}'),
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                child: const Icon(Icons.copy, size: 12, color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                          if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  'هاتف التواصل البديل: ${order.additionalPhone}',
+                                  style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 6),
+                                GestureDetector(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: order.additionalPhone!));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('تم نسخ الهاتف البديل: ${order.additionalPhone}'),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  child: const Icon(Icons.copy, size: 12, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -666,7 +726,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '🍔 ${item.productName}',
+                                    item.productName,
                                     style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.w600),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -678,6 +738,30 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                               ],
                             ),
                           )),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Pricing Breakdown Details
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('مجموع الوجبات:', style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                          Text(Formatters.formatCurrency(order.subtotal), style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('رسوم التوصيل:', style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                          Text(Formatters.formatCurrency(order.deliveryFee), style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -694,7 +778,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       border: Border.all(color: Colors.amber.shade200.withAlpha(120)),
                     ),
                     child: Text(
-                      '📝 ملاحظات: ${order.note}',
+                      'ملاحظات الطلب: ${order.note}',
                       style: AppFonts.cairoFont(fontSize: 11, color: isDark ? Colors.amber.shade100 : Colors.amber.shade900),
                     ),
                   ),

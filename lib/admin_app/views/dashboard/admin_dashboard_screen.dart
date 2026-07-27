@@ -151,106 +151,187 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       drawer: Drawer(
-        child: Column(
-          children: [
-            // Drawer Header displaying Admin Profile Info
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-              ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(
-                  admin?.isSuperAdmin == true ? Icons.stars : Icons.admin_panel_settings,
-                  size: 40,
-                  color: AppColors.primary,
+        child: Container(
+          decoration: BoxDecoration(
+            color: themeProvider.isDarkMode ? Colors.grey.shade900 : Colors.white,
+          ),
+          child: Column(
+            children: [
+              // Premium Custom Drawer Header
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, bottom: 20, left: 16, right: 16),
+                decoration: const BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              admin?.isSuperAdmin == true ? Icons.stars : Icons.admin_panel_settings,
+                              size: 32,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                admin?.fullName ?? 'مدير النظام',
+                                style: AppFonts.cairoFont(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(50),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  admin?.isSuperAdmin == true ? 'مدير عام بالنظام 👑' : 'مدير بصلاحيات محدودة 🛠️',
+                                  style: AppFonts.cairoFont(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              accountName: Text(
-                admin?.fullName ?? 'مدير النظام',
-                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
-              ),
-              accountEmail: Text(
-                admin?.isSuperAdmin == true ? 'مدير عام بالنظام 👑' : 'مدير بصلاحيات محدودة 🛠️',
-                style: AppFonts.cairoFont(color: Colors.white70, fontSize: 11),
-              ),
-            ),
 
-            // Drawer Items with permission checks
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'الواجهات الإدارية الإضافية',
-                      style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+              // Drawer Navigation Items
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      child: Text(
+                        'القائمة الإدارية والإعدادات',
+                        style: AppFonts.cairoFont(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 10, thickness: 0.5),
+                    const SizedBox(height: 8),
+
+                    // Option 1: Reports & Analytics
+                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('view_reports')))
+                      _buildDrawerItem(
+                        icon: Icons.bar_chart_outlined,
+                        title: 'التقارير والإحصائيات 📊',
+                        subtitle: 'مراجعة المبيعات والأرباح والتصفية',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminReportsScreen()),
+                          );
+                        },
+                      ),
+
+                    // Option 2: Manage Sub-Admins
+                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_admins')))
+                      _buildDrawerItem(
+                        icon: Icons.people_alt_outlined,
+                        title: 'إدارة المدراء والصلاحيات 👥',
+                        subtitle: 'تعيين المشرفين وتعديل صلاحياتهم',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminSubAdminsScreen()),
+                          );
+                        },
+                      ),
+
+                    // Option 3: Manage Ads & Notifications
+                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_products')))
+                      _buildDrawerItem(
+                        icon: Icons.campaign_outlined,
+                        title: 'إدارة الإعلانات والتنبيهات 📢',
+                        subtitle: 'نشر عروض جديدة وتنبيهات للعملاء',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminAdsScreen()),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+
+              // Custom Logout Card at the bottom
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: InkWell(
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await authProvider.logout();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withAlpha(20),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.danger.withAlpha(40)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.logout, color: AppColors.danger, size: 20),
+                        const SizedBox(width: 10),
+                        Text(
+                          'تسجيل الخروج من النظام',
+                          style: AppFonts.cairoFont(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Divider(),
-
-                  // Option 1: Reports & Analytics
-                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('view_reports')))
-                    ListTile(
-                      leading: const Icon(Icons.bar_chart_outlined, color: AppColors.primary),
-                      title: Text('التقارير والإحصائيات 📊', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: Text('عرض الإيرادات والتحليلات اليومية', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
-                      onTap: () {
-                        Navigator.of(context).pop(); // Close drawer
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminReportsScreen()),
-                        );
-                      },
-                    ),
-
-                  // Option 2: Manage Sub-Admins
-                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_admins')))
-                    ListTile(
-                      leading: const Icon(Icons.people_alt_outlined, color: AppColors.primary),
-                      title: Text('إدارة المدراء والصلاحيات 👥', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: Text('إضافة وتعديل المشرفين وصلاحياتهم', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
-                      onTap: () {
-                        Navigator.of(context).pop(); // Close drawer
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminSubAdminsScreen()),
-                        );
-                      },
-                    ),
-
-                  // Option 3: Manage Ads & Notifications
-                  if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_products')))
-                    ListTile(
-                      leading: const Icon(Icons.campaign_outlined, color: AppColors.primary),
-                      title: Text('إدارة الإعلانات والتنبيهات 📢', style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: Text('إضافة عروض وتنبيهات في شريط العملاء', style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey)),
-                      onTap: () {
-                        Navigator.of(context).pop(); // Close drawer
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminAdsScreen()),
-                        );
-                      },
-                    ),
-                  
-                  const Divider(),
-                ],
+                ),
               ),
-            ),
-
-            // Logout row at the bottom of the Drawer
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.danger),
-              title: Text('تسجيل الخروج', style: AppFonts.cairoFont(fontSize: 13, color: AppColors.danger, fontWeight: FontWeight.bold)),
-              onTap: () async {
-                Navigator.of(context).pop(); // Close drawer
-                await authProvider.logout();
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
       ),
       body: allowedTabs.isEmpty
@@ -311,6 +392,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 items: allowedTabs.map((t) => t.item).toList(),
               ),
             ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: Colors.grey.withAlpha(15),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withAlpha(20),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 22),
+        ),
+        title: Text(
+          title,
+          style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey.shade600),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+        onTap: onTap,
+      ),
     );
   }
 }

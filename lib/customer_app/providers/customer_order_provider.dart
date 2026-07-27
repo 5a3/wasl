@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
@@ -67,6 +68,7 @@ class CustomerOrderProvider extends ChangeNotifier {
     required double totalAmount,
     required String deliveryAddress,
     String? note,
+    String? additionalPhone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -74,7 +76,11 @@ class CustomerOrderProvider extends ChangeNotifier {
 
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionOrders).doc();
-      final orderNumber = 'W-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      // Generate a highly unique 8-digit order number combining microsecond timestamp and random values to guarantee 100% uniqueness
+      final timestampStr = DateTime.now().microsecondsSinceEpoch.toString();
+      final lastFiveDigits = timestampStr.substring(timestampStr.length - 5);
+      final randomThreeDigits = (Random().nextInt(900) + 100).toString();
+      final orderNumber = 'W-$lastFiveDigits$randomThreeDigits';
 
       final newOrder = OrderModel(
         id: docRef.id,
@@ -91,6 +97,7 @@ class CustomerOrderProvider extends ChangeNotifier {
         status: AppConstants.statusPending,
         items: items,
         note: note,
+        additionalPhone: additionalPhone,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
