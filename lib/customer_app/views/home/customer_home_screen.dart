@@ -29,7 +29,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('واصل - قائمة الوجبات والمشروبات'),
+        title: const Text('وصل لي - قائمة الوجبات والمشروبات'),
         actions: [
           IconButton(
             icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),

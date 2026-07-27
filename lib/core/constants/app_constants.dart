@@ -2,9 +2,9 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'واصل للتوصيل';
-  static const String adminAppName = 'لوحة إدارة واصل';
-  static const String customerAppName = 'واصل - الطلب والتوصيل';
+  static const String appName = 'وصل لي للتوصيل';
+  static const String adminAppName = 'لوحة إدارة وصل لي';
+  static const String customerAppName = 'وصل لي - الطلب والتوصيل';
   static const String currencySymbol = 'ر.ي'; // الريال اليمني
 
   // Shared Preferences Keys

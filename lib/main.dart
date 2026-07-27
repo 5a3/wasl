@@ -29,6 +29,7 @@ import 'customer_app/providers/customer_auth_provider.dart';
 import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
+import 'core/utils/pdf_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,9 @@ void main() async {
   // Initialize Storage Service & Connectivity Listener
   await StorageService.init();
   ConnectivityService().initialize();
+
+  // Preload PDF fonts in the background to eliminate lag when printing/saving PDFs
+  PdfHelper.preloadFonts();
 
   // Initialize Firebase (safely handles web/mobile platform checks)
   try {
@@ -162,7 +166,7 @@ class AppLauncherChooserScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'أهلاً بك في نظام واصل للمأكولات السريعة',
+              'أهلاً بك في نظام وصل لي للمأكولات السريعة',
               textAlign: TextAlign.center,
               style: AppFonts.cairoFont(
                 fontSize: 20,

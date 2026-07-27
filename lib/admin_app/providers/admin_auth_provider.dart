@@ -231,59 +231,6 @@ class AdminAuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Create or Ensure Initial Super Admin User (ahmed / 123456)
-  Future<bool> createInitialAdmin({
-    String username = 'ahmed',
-    String password = '123456',
-    String fullName = 'أحمد المدير العام',
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final existing = await _firestore
-          .collection(FirebaseConstants.collectionAdmins)
-          .where('username', isEqualTo: username.trim())
-          .get()
-          .timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => throw 'لم يتم تفعيل قاعدة البيانات Firestore في مشروع wasl-cdcb6 على Firebase! يرجى إنشاء Database أولاً.',
-          );
-
-      if (existing.docs.isNotEmpty) {
-        final docId = existing.docs.first.id;
-        await _firestore
-            .collection(FirebaseConstants.collectionAdmins)
-            .doc(docId)
-            .update({
-          'password': password,
-          'role': FirebaseConstants.roleSuperAdmin,
-        }).timeout(const Duration(seconds: 8));
-      } else {
-        final docRef = _firestore.collection(FirebaseConstants.collectionAdmins).doc();
-        final admin = AdminModel(
-          id: docRef.id,
-          username: username.trim(),
-          password: password,
-          fullName: fullName.trim(),
-          role: FirebaseConstants.roleSuperAdmin,
-          permissions: ['manage_products', 'manage_orders', 'view_reports', 'manage_admins'],
-          createdAt: DateTime.now(),
-        );
-        await docRef.set(admin.toMap()).timeout(const Duration(seconds: 8));
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = 'خطأ: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
 
   Future<void> logout() async {
     _currentAdmin = null;

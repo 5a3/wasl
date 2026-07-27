@@ -189,6 +189,13 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'إدارة المدراء والصلاحيات',
+          style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        elevation: 1,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_admin_sub_admins',
         backgroundColor: AppColors.primary,

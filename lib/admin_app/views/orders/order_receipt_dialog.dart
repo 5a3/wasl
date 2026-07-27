@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -6,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/pdf_helper.dart';
 import '../../../shared/models/order_model.dart';
 
 /// Interactive Printable Cafeteria Order Receipt Modal with Cairo PDF Font Support
@@ -22,19 +24,25 @@ class OrderReceiptDialog extends StatelessWidget {
     text = text.replaceAll(RegExp(r'[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]', unicode: true), '');
     // Normalize Persian Ya (ی) to Arabic Ya (ي)
     text = text.replaceAll('\u06CC', '\u064A');
-    return text.trim();
+    // Apply custom Arabic reshaping to fix dots on final form of Yeh (ي)
+    return PdfHelper.reshapeArabic(text.trim());
   }
 
   Future<void> _printReceipt(BuildContext context) async {
     final pdf = pw.Document();
 
-    // Fetch Cairo font for clean Arabic PDF rendering
-    final cairoRegular = await PdfGoogleFonts.cairoMedium();
-    final cairoBold = await PdfGoogleFonts.cairoBold();
+    // Fetch Cairo font for clean Arabic PDF rendering from cached helper
+    final cairoRegular = await PdfHelper.cairoRegular;
+    final cairoBold = await PdfHelper.cairoBold;
+
+    // Load SVG files as strings for rendering inside PDF
+    final logoReportSvg = await rootBundle.loadString('assets/images/logoreport.svg');
+    final logoSvg = await rootBundle.loadString('assets/images/logo.svg');
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80, // Receipt Roll Format
+        margin: const pw.EdgeInsets.all(12), // Narrow cashier margins
         theme: pw.ThemeData.withFont(
           base: cairoRegular,
           bold: cairoBold,
@@ -45,6 +53,15 @@ class OrderReceiptDialog extends StatelessWidget {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
+                // Centered top report logo
+                pw.Center(
+                  child: pw.Container(
+                    width: 100,
+                    height: 50,
+                    child: pw.SvgImage(svg: logoReportSvg),
+                  ),
+                ),
+                pw.SizedBox(height: 6),
                 pw.Center(
                   child: pw.Text(cleanPdfText(AppConstants.appName), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: cairoBold)),
                 ),
@@ -83,8 +100,19 @@ class OrderReceiptDialog extends StatelessWidget {
                   ],
                 ),
                 pw.SizedBox(height: 10),
+                pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
+                pw.SizedBox(height: 6),
+                // Centered bottom footer message and app logo SVG
                 pw.Center(
-                  child: pw.Text(cleanPdfText('شكراً لطلبكم من واصل!'), style: const pw.TextStyle(fontSize: 9)),
+                  child: pw.Text(cleanPdfText('شكراً لطلبكم من وصل لي!'), style: const pw.TextStyle(fontSize: 9)),
+                ),
+                pw.SizedBox(height: 6),
+                pw.Center(
+                  child: pw.Container(
+                    width: 36,
+                    height: 36,
+                    child: pw.SvgImage(svg: logoSvg),
+                  ),
                 ),
               ],
             ),

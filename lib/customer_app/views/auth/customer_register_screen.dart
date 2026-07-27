@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -81,8 +82,8 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
+                child: SvgPicture.asset(
+                  'assets/images/logo.svg',
                   width: 90,
                   height: 90,
                   fit: BoxFit.contain,

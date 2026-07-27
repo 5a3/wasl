@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/constants/app_constants.dart';
+import '../../shared/models/order_model.dart';
 
 class TopProductItem {
   final String productName;
@@ -37,10 +39,12 @@ class AnalyticsProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   AnalyticsReport? _currentReport;
+  List<OrderModel> _detailedOrders = [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   AnalyticsReport? get currentReport => _currentReport;
+  List<OrderModel> get detailedOrders => _detailedOrders;
 
   double get totalRevenue => _currentReport?.totalRevenue ?? 0.0;
   int get totalOrdersCount => _currentReport?.totalOrders ?? 0;
@@ -61,6 +65,58 @@ class AnalyticsProvider extends ChangeNotifier {
 
   Future<void> fetchDailyReport(DateTime date) async {
     await fetchAnalyticsForRange(startDate: date, endDate: date);
+  }
+
+  Future<void> fetchDetailedAnalyticsForRange({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _detailedOrders = [];
+    notifyListeners();
+
+    try {
+      final startTimestamp = Timestamp.fromDate(DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0));
+      final endTimestamp = Timestamp.fromDate(DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59));
+
+      final snapshot = await _firestore
+          .collection('orders')
+          .where('createdAt', isGreaterThanOrEqualTo: startTimestamp)
+          .where('createdAt', isLessThanOrEqualTo: endTimestamp)
+          .get(const GetOptions(source: Source.serverAndCache));
+
+      _detailedOrders = snapshot.docs
+          .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
+          .toList();
+
+      final completedOrders = _detailedOrders.where((o) => o.status == AppConstants.statusDelivered).toList();
+      final canceledOrdersList = _detailedOrders.where((o) => o.status == AppConstants.statusCanceled).toList();
+
+      double totalRev = completedOrders.fold(0.0, (total, o) => total + o.totalAmount);
+      Map<String, int> productSales = {};
+
+      for (var order in completedOrders) {
+        for (var item in order.items) {
+          productSales[item.productName] = (productSales[item.productName] ?? 0) + item.quantity;
+        }
+      }
+
+      _currentReport = AnalyticsReport(
+        totalRevenue: totalRev,
+        totalOrders: _detailedOrders.length,
+        deliveredOrders: completedOrders.length,
+        canceledOrders: canceledOrdersList.length,
+        productSales: productSales,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'تعذر جلب البيانات التفصيلية: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> fetchAnalyticsForRange({

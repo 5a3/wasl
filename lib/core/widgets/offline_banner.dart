@@ -56,7 +56,7 @@ class OfflineBannerWrapper extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'يلزم توفر اتصال نشط بالإنترنت لاستخدام تطبيق واصل. يرجى التحقق من اتصال شبكة Wi-Fi أو بيانات الهاتف.',
+                              'يلزم توفر اتصال نشط بالإنترنت لاستخدام تطبيق وصل لي. يرجى التحقق من اتصال شبكة Wi-Fi أو بيانات الهاتف.',
                               style: AppFonts.cairoFont(
                                 fontSize: 14,
                                 color: Colors.grey.shade700,

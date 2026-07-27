@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/validators.dart';
@@ -80,8 +81,8 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
             children: [
               const SizedBox(height: 16),
               Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
+                child: SvgPicture.asset(
+                  'assets/images/logo.svg',
                   width: 120,
                   height: 120,
                   fit: BoxFit.contain,
