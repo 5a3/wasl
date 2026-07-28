@@ -11,6 +11,7 @@ import '../orders/admin_orders_screen.dart';
 import '../products/admin_products_screen.dart';
 import '../reports/admin_reports_screen.dart';
 import '../sub_admins/admin_sub_admins_screen.dart';
+import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
 
 class DashboardTab {
@@ -286,6 +287,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const AdminAdsScreen()),
+                          );
+                        },
+                      ),
+
+                    // Option 4: Broadcast App Notifications
+                    if (admin != null && admin.isSuperAdmin)
+                      _buildDrawerItem(
+                        icon: Icons.notifications_active_outlined,
+                        title: 'إشعارات التطبيق 🔔',
+                        subtitle: 'إرسال وتصفح الإشعارات العامة للعملاء',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminNotificationsScreen()),
                           );
                         },
                       ),

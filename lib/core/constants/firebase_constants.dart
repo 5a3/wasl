@@ -10,8 +10,12 @@ class FirebaseConstants {
   static const String collectionDeliveryZones = 'delivery_zones';
   static const String collectionOrders = 'orders';
   static const String collectionDailyReports = 'daily_reports';
+  static const String collectionNotifications = 'notifications';
 
   // Admin Roles
   static const String roleSuperAdmin = 'super_admin';
   static const String roleSubAdmin = 'sub_admin';
+
+  // FCM Push Notification Server Key (Legacy FCM HTTP API Key)
+  static const String fcmServerKey = 'AIzaSyAaiHxvaYSYQ_GwIev6WbaUQlry-wW__g8';
 }

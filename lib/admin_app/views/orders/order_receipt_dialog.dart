@@ -41,8 +41,8 @@ class OrderReceiptDialog extends StatelessWidget {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.roll80, // Receipt Roll Format
-        margin: const pw.EdgeInsets.all(12), // Narrow cashier margins
+        pageFormat: PdfPageFormat.roll80,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         theme: pw.ThemeData.withFont(
           base: cairoRegular,
           bold: cairoBold,
@@ -51,58 +51,133 @@ class OrderReceiptDialog extends StatelessWidget {
           return pw.Directionality(
             textDirection: pw.TextDirection.rtl,
             child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                // Centered top report logo
+                // Centered logo header
                 pw.Center(
                   child: pw.Container(
-                    width: 100,
-                    height: 50,
+                    width: 90,
+                    height: 45,
                     child: pw.SvgImage(svg: logoReportSvg),
                   ),
                 ),
-                pw.SizedBox(height: 6),
+                pw.SizedBox(height: 4),
                 pw.Center(
-                  child: pw.Text(cleanPdfText(AppConstants.appName), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                  child: pw.Text(
+                    cleanPdfText(AppConstants.appName),
+                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, font: cairoBold),
+                  ),
                 ),
                 pw.Center(
-                  child: pw.Text(cleanPdfText('فاتورة سند طلب - #${order.orderNumber}'), style: const pw.TextStyle(fontSize: 10)),
+                  child: pw.Text(
+                    cleanPdfText('فاتورة سند طلب - #${order.orderNumber}'),
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
                 ),
                 pw.Divider(thickness: 0.5),
-                pw.Text(cleanPdfText('العميل: ${order.customerName}'), style: const pw.TextStyle(fontSize: 9)),
-                pw.Text(cleanPdfText('الهاتف: ${order.customerPhone}'), style: const pw.TextStyle(fontSize: 9)),
-                pw.Text(cleanPdfText('منطقة التوصيل: ${order.deliveryZoneName}'), style: const pw.TextStyle(fontSize: 9)),
-                pw.Text(cleanPdfText('العنوان: ${order.deliveryAddress}'), style: const pw.TextStyle(fontSize: 9)),
-                pw.Text(cleanPdfText('التاريخ: ${Formatters.formatDateTime(order.createdAt)}'), style: const pw.TextStyle(fontSize: 8)),
-                pw.Divider(thickness: 0.5),
-                ...order.items.map((item) => pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Expanded(
-                          child: pw.Text(cleanPdfText('${item.productName} (x${item.quantity})'), style: const pw.TextStyle(fontSize: 8)),
+
+                // Customer & Delivery Details - 2 columns per row
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(child: pw.Text(cleanPdfText('العميل: ${order.customerName}'), style: const pw.TextStyle(fontSize: 8))),
+                    pw.SizedBox(width: 4),
+                    pw.Expanded(child: pw.Text(cleanPdfText('هاتف: ${order.customerPhone}'), style: const pw.TextStyle(fontSize: 8))),
+                  ],
+                ),
+                pw.SizedBox(height: 2),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(child: pw.Text(cleanPdfText('المنطقة: ${order.deliveryZoneName}'), style: const pw.TextStyle(fontSize: 8))),
+                    pw.SizedBox(width: 4),
+                    pw.Expanded(child: pw.Text(cleanPdfText('العنوان: ${order.deliveryAddress}'), style: const pw.TextStyle(fontSize: 8))),
+                  ],
+                ),
+                pw.SizedBox(height: 2),
+                if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty) ...[
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Text(
+                          cleanPdfText('هاتف بديل: ${order.additionalPhone}'),
+                          style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, font: cairoBold),
                         ),
-                        pw.Text(cleanPdfText('${item.totalPrice} ر.ي'), style: const pw.TextStyle(fontSize: 8)),
-                      ],
-                    )),
+                      ),
+                      pw.SizedBox(width: 4),
+                      pw.Expanded(child: pw.Text(cleanPdfText('التاريخ: ${Formatters.formatDateTime(order.createdAt)}'), style: const pw.TextStyle(fontSize: 8))),
+                    ],
+                  ),
+                ] else ...[
+                  pw.Text(cleanPdfText('التاريخ: ${Formatters.formatDateTime(order.createdAt)}'), style: const pw.TextStyle(fontSize: 8)),
+                ],
+                if (order.note != null && order.note!.trim().isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(cleanPdfText('ملاحظات: ${order.note}'), style: const pw.TextStyle(fontSize: 8)),
+                ],
                 pw.Divider(thickness: 0.5),
+
+                // Items - RTL rows: Name(xQty) on right | Price on left
+                ...order.items.map((item) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Text(
+                          cleanPdfText('${item.productName} (x${item.quantity})'),
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ),
+                      pw.SizedBox(width: 6),
+                      pw.Text(
+                        cleanPdfText('${item.totalPrice} ر.ي'),
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                    ],
+                  ),
+                )),
+
+                pw.Divider(thickness: 0.5),
+
+                // Pricing breakdown - label left, value right (RTL)
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(cleanPdfText('أجرة التوصيل:'), style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text(cleanPdfText('مجموع الوجبات:'), style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text(cleanPdfText('${order.subtotal} ر.ي'), style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+                pw.SizedBox(height: 2),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(cleanPdfText('رسوم التوصيل:'), style: const pw.TextStyle(fontSize: 9)),
                     pw.Text(cleanPdfText('${order.deliveryFee} ر.ي'), style: const pw.TextStyle(fontSize: 9)),
                   ],
                 ),
+                pw.SizedBox(height: 4),
+                pw.Divider(thickness: 1),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(cleanPdfText('الإجمالي المستحق:'), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: cairoBold)),
-                    pw.Text(cleanPdfText('${order.totalAmount} ر.ي'), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: cairoBold)),
+                    pw.Text(
+                      cleanPdfText('الإجمالي المستحق:'),
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: cairoBold),
+                    ),
+                    pw.Text(
+                      cleanPdfText('${order.totalAmount} ر.ي'),
+                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: cairoBold),
+                    ),
                   ],
                 ),
+
                 pw.SizedBox(height: 10),
                 pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
                 pw.SizedBox(height: 6),
-                // Centered bottom footer message and app logo SVG
+
+                // Footer - centered
                 pw.Center(
                   child: pw.Text(cleanPdfText('شكراً لطلبكم من وصل لي!'), style: const pw.TextStyle(fontSize: 9)),
                 ),
@@ -112,6 +187,21 @@ class OrderReceiptDialog extends StatelessWidget {
                     width: 36,
                     height: 36,
                     child: pw.SvgImage(svg: logoSvg),
+                  ),
+                ),
+                pw.SizedBox(height: 6),
+                pw.Divider(thickness: 0.3),
+                pw.SizedBox(height: 3),
+                pw.Center(
+                  child: pw.Text(
+                    cleanPdfText('برمجة: م. احمد العطاس'),
+                    style: const pw.TextStyle(fontSize: 7),
+                  ),
+                ),
+                pw.Center(
+                  child: pw.Text(
+                    '770985114',
+                    style: const pw.TextStyle(fontSize: 7),
                   ),
                 ),
               ],
@@ -168,11 +258,15 @@ class OrderReceiptDialog extends StatelessWidget {
 
                 // Customer & Delivery Metadata
                 _buildInfoRow('اسم العميل:', order.customerName),
-                _buildInfoRow('رقم الهاتف:', order.customerPhone),
+                _buildInfoRow('هاتف التواصل الأساسي:', order.customerPhone),
+                if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty)
+                  _buildInfoRow('هاتف التواصل البديل:', order.additionalPhone!),
                 _buildInfoRow('منطقة التوصيل:', order.deliveryZoneName),
                 _buildInfoRow('عنوان التوصيل:', order.deliveryAddress),
                 _buildInfoRow('تاريخ الطلب:', Formatters.formatDateTime(order.createdAt)),
                 _buildInfoRow('حالة الطلب:', order.statusArabic),
+                if (order.note != null && order.note!.trim().isNotEmpty)
+                  _buildInfoRow('ملاحظات الطلب:', order.note!),
 
                 const SizedBox(height: 16),
                 Text(

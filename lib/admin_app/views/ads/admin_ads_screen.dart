@@ -173,7 +173,7 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
     if (confirm == true && mounted) {
       final ok = await Provider.of<AdProvider>(context, listen: false).deleteAd(ad.id, ad.imageUrl);
       if (ok && mounted) {
-        CustomDialog.showSuccessSnackBar(context, 'تم حذف الإعلان والتنبيه الملحق بنجاح');
+        CustomDialog.showSuccessSnackBar(context, 'تم حذف الإعلان بنجاح 🗑️');
       }
     }
   }
@@ -285,7 +285,7 @@ class _AdFormBottomSheetState extends State<_AdFormBottomSheet> {
         Navigator.of(context).pop();
         CustomDialog.showSuccessSnackBar(
           context,
-          isEditing ? 'تم تعديل الإعلان والتنبيه بنجاح' : 'تم إضافة الإعلان والتنبيه بنجاح ⚡',
+          isEditing ? 'تم تعديل الإعلان بنجاح ✅' : 'تم إضافة الإعلان بنجاح ⚡',
         );
       } else if (adProvider.errorMessage != null) {
         CustomDialog.showErrorSnackBar(context, adProvider.errorMessage!);

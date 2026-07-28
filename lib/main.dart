@@ -18,6 +18,7 @@ import 'admin_app/providers/admin_auth_provider.dart';
 import 'admin_app/providers/analytics_provider.dart';
 import 'admin_app/providers/category_provider.dart';
 import 'admin_app/providers/delivery_zone_provider.dart';
+import 'admin_app/providers/notification_provider.dart';
 import 'admin_app/providers/order_management_provider.dart';
 import 'admin_app/providers/product_provider.dart';
 import 'admin_app/providers/ad_provider.dart';
@@ -26,9 +27,11 @@ import 'admin_app/views/auth/admin_login_screen.dart';
 // Customer App Providers & Views
 import 'customer_app/providers/cart_provider.dart';
 import 'customer_app/providers/customer_auth_provider.dart';
+import 'customer_app/providers/customer_notification_provider.dart';
 import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
+import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
 
 void main() async {
@@ -47,6 +50,8 @@ void main() async {
   // Initialize Firebase (safely handles web/mobile platform checks)
   try {
     await Firebase.initializeApp();
+    // Initialize FCM Messaging & Local Notifications
+    await FcmService.initialize();
   } catch (e) {
     debugPrint('Firebase Initialization Note: $e');
   }
@@ -63,6 +68,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => OrderManagementProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
         ChangeNotifierProvider(create: (_) => AdProvider()),
+        ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
+        ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
         ChangeNotifierProxyProvider<CustomerAuthProvider, CartProvider>(
           create: (_) => CartProvider(),
@@ -101,6 +108,8 @@ void main() async {
   );
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class WaslAppMain extends StatelessWidget {
   const WaslAppMain({super.key});
 
@@ -109,6 +118,7 @@ class WaslAppMain extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       themeMode: themeProvider.themeMode,

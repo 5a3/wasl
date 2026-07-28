@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
-import '../../../core/theme/theme_provider.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/customer_notification_provider.dart';
+import '../notifications/customer_notifications_screen.dart';
 import '../cart/cart_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../my_orders/customer_orders_screen.dart';
@@ -22,20 +24,69 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _currentIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CustomerNotificationProvider>(context, listen: false).fetchNotifications();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final notificationProvider = Provider.of<CustomerNotificationProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('وصل لي - قائمة الوجبات والمشروبات'),
         actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () {
-              themeProvider.toggleTheme(!themeProvider.isDarkMode);
-            },
+          // Notification Action Button with Badge
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, size: 26),
+                tooltip: 'الإشعارات',
+                onPressed: () async {
+                  // Request notification permission if not granted yet
+                  await FcmService.requestPermissions();
+
+                  if (context.mounted) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CustomerNotificationsScreen(),
+                      ),
+                    );
+                  }
+                },
+              ),
+              if (notificationProvider.unreadCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Text(
+                      notificationProvider.unreadCount > 99
+                          ? '99+'
+                          : '+${notificationProvider.unreadCount}',
+                      textAlign: TextAlign.center,
+                      style: AppFonts.cairoFont(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           Stack(
             children: [

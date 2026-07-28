@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/product_provider.dart';
 import '../../../admin_app/providers/ad_provider.dart';
+import '../../../shared/models/ad_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
@@ -280,6 +281,79 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  /// Display interactive full screen preview dialog when tapping an ad
+  void _showAdFullPreview(BuildContext context, AdModel ad) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxWidth: MediaQuery.of(context).size.width * 0.95,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(230),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.primary.withAlpha(100), width: 1.5),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (ad.title.trim().isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        ad.title,
+                        style: AppFonts.cairoFont(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Flexible(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: InteractiveViewer(
+                        minScale: 0.8,
+                        maxScale: 3.5,
+                        child: CustomCachedImage(
+                          imageUrl: ad.imageUrl,
+                          fit: BoxFit.contain,
+                          errorWidget: const Icon(Icons.broken_image, size: 60, color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withAlpha(180),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Package based ads carousel (No Title display as requested)
   Widget _buildCarouselAds(AdProvider adProvider) {
     final activeAds = adProvider.activeAds;
@@ -309,24 +383,27 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             itemBuilder: (ctx, idx, realIdx) {
               final ad = activeAds[idx];
-              return Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 30 : 10),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+              return GestureDetector(
+                onTap: () => _showAdFullPreview(context, ad),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(isDark ? 30 : 10),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: CustomCachedImage(
+                      imageUrl: ad.imageUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: CustomCachedImage(
-                    imageUrl: ad.imageUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
                   ),
                 ),
               );

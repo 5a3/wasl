@@ -1,9 +1,10 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/services/firebase_storage_service.dart';
 import '../../../shared/models/ad_model.dart';
 
-/// Provider for managing promotional Ads and their Notifications in Firestore
+/// Provider for managing promotional Ads in Firestore ("ads" collection only)
 class AdProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -20,7 +21,7 @@ class AdProvider extends ChangeNotifier {
     fetchAds();
   }
 
-  /// Listen to Ads stream in real-time
+  /// Listen to Ads stream in real-time from "ads" collection
   void fetchAds() {
     _isLoading = true;
     notifyListeners();
@@ -44,7 +45,7 @@ class AdProvider extends ChangeNotifier {
     );
   }
 
-  /// Add new Ad & sync to Firestore "notafcation" collection
+  /// Add new Ad to "ads" collection only
   Future<bool> addAd({
     required String title,
     required dynamic imageFile, // File or Uint8List or URL string
@@ -69,18 +70,8 @@ class AdProvider extends ChangeNotifier {
         createdAt: now,
       );
 
-      // 1. Save in "ads"
+      // Save ONLY in "ads" collection
       await adDocRef.set(newAd.toMap());
-
-      // 2. Save in "notafcation" as requested by the user
-      await _firestore.collection('notafcation').doc(adDocRef.id).set({
-        'id': adDocRef.id,
-        'title': title.trim(),
-        'isActive': true,
-        'createdAt': Timestamp.fromDate(now),
-        'imageUrl': uploadedUrl,
-        'notificationType': 'promotion_ad',
-      });
 
       _isLoading = false;
       notifyListeners();
@@ -93,11 +84,12 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  /// Update existing Ad, upload new image if changed, delete old image, & sync to "notafcation"
+  /// Update existing Ad in "ads" collection.
+  /// Safely handles image updates without deleting the existing image if no new file is picked.
   Future<bool> updateAd({
     required String adId,
     required String title,
-    required dynamic imageFile, // File or Uint8List or null if unchanged
+    required dynamic imageFile, // File or Uint8List or new URL string (or null/existing url)
     required bool isActive,
     required String existingImageUrl,
   }) async {
@@ -108,37 +100,32 @@ class AdProvider extends ChangeNotifier {
     try {
       String finalImageUrl = existingImageUrl;
 
-      if (imageFile != null) {
-        // Upload new image
+      // Check if a NEW image file or new URL was actually provided by user
+      final bool isNewImageSelected = imageFile != null &&
+          imageFile != existingImageUrl &&
+          (imageFile is File || imageFile is Uint8List || (imageFile is String && imageFile.startsWith('http')));
+
+      if (isNewImageSelected) {
+        // Upload new image to Storage under ads/<title>_<timestamp>.jpg
         finalImageUrl = await FirebaseStorageService.uploadAdImage(
           imageFile: imageFile,
           adTitle: title,
         );
 
-        // Delete old image
-        if (existingImageUrl.isNotEmpty && existingImageUrl.startsWith('http')) {
+        // Safely delete old image ONLY after new image uploaded successfully
+        if (existingImageUrl.isNotEmpty && existingImageUrl.startsWith('http') && existingImageUrl != finalImageUrl) {
           await FirebaseStorageService.deleteImage(existingImageUrl);
         }
       }
 
       final now = DateTime.now();
 
-      // 1. Update "ads" document
+      // Update document ONLY in "ads" collection
       await _firestore.collection('ads').doc(adId).update({
         'title': title.trim(),
         'imageUrl': finalImageUrl,
         'isActive': isActive,
         'updatedAt': Timestamp.fromDate(now),
-      });
-
-      // 2. Update "notafcation" document
-      await _firestore.collection('notafcation').doc(adId).set({
-        'id': adId,
-        'title': title.trim(),
-        'isActive': isActive,
-        'createdAt': Timestamp.fromDate(now),
-        'imageUrl': finalImageUrl,
-        'notificationType': 'promotion_ad',
       });
 
       _isLoading = false;
@@ -152,14 +139,10 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  /// Toggle Active status in both Firestore collections
+  /// Toggle Active status in "ads" collection only
   Future<bool> toggleAdStatus(String adId, bool isActive) async {
     try {
       await _firestore.collection('ads').doc(adId).update({
-        'isActive': isActive,
-      });
-
-      await _firestore.collection('notafcation').doc(adId).update({
         'isActive': isActive,
       });
       return true;
@@ -169,23 +152,20 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  /// Delete Ad from storage, "ads" and "notafcation" collections
+  /// Delete Ad from Storage & "ads" collection only
   Future<bool> deleteAd(String adId, String imageUrl) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // 1. Delete image file
+      // 1. Delete image file from Firebase Storage
       if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
         await FirebaseStorageService.deleteImage(imageUrl);
       }
 
-      // 2. Delete Firestore doc from "ads"
+      // 2. Delete document from "ads" collection
       await _firestore.collection('ads').doc(adId).delete();
-
-      // 3. Delete Firestore doc from "notafcation"
-      await _firestore.collection('notafcation').doc(adId).delete();
 
       _isLoading = false;
       notifyListeners();
