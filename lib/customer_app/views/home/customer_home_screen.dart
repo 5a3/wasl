@@ -6,12 +6,12 @@ import '../../../core/constants/app_fonts.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_notification_provider.dart';
+import '../../providers/customer_order_provider.dart';
 import '../../widgets/customer_drawer.dart';
 import '../notifications/customer_notifications_screen.dart';
 import '../cart/cart_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../my_orders/customer_orders_screen.dart';
-import '../profile/profile_screen.dart';
 import 'menu_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -29,6 +29,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CustomerNotificationProvider>(context, listen: false).fetchNotifications();
+      final customer = Provider.of<CustomerAuthProvider>(context, listen: false).currentCustomer;
+      if (customer != null) {
+        Provider.of<CustomerOrderProvider>(context, listen: false).listenToCustomerOrders(customer.id);
+      }
     });
   }
 
@@ -36,6 +40,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final notificationProvider = Provider.of<CustomerNotificationProvider>(context);
+    final customerOrderProvider = Provider.of<CustomerOrderProvider>(context);
     final customerAuth = Provider.of<CustomerAuthProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -56,9 +61,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         break;
       case 3:
         appBarTitle = 'طلباتي ومتابعة الشحن';
-        break;
-      case 4:
-        appBarTitle = 'الملف الشخصي والحساب';
         break;
       default:
         appBarTitle = 'مرحباً، $firstName';
@@ -175,8 +177,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               return const CartScreen();
             case 3:
               return CustomerOrdersScreen(scrollController: controller);
-            case 4:
-              return const ProfileScreen();
             default:
               return MenuScreen(scrollController: controller);
           }
@@ -190,10 +190,82 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               _buildNavItem(0, Icons.restaurant_menu_outlined, Icons.restaurant_menu, 'القائمة'),
               _buildNavItem(1, Icons.favorite_outline, Icons.favorite, 'المفضلة'),
               _buildCartNavItem(cartProvider),
-              _buildNavItem(3, Icons.delivery_dining_outlined, Icons.delivery_dining, 'طلباتي'),
-              _buildNavItem(4, Icons.person_outline, Icons.person, 'حسابي'),
+              _buildOrdersNavItem(customerOrderProvider),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Special navigation item for My Orders with active orders count badge
+  Widget _buildOrdersNavItem(CustomerOrderProvider orderProvider) {
+    final isSelected = _currentIndex == 3;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color selectedColor = isDark ? AppColors.primary : Colors.white;
+    final Color unselectedColor = isDark ? Colors.grey.shade400 : Colors.white.withAlpha(170);
+
+    final Color badgeBgColor = isDark ? AppColors.primary : Colors.white;
+    final Color badgeTextColor = isDark ? Colors.white : AppColors.primary;
+
+    final activeCount = orderProvider.myActiveOrders.length;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = 3;
+        });
+      },
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  isSelected ? Icons.delivery_dining : Icons.delivery_dining_outlined,
+                  color: isSelected ? selectedColor : unselectedColor,
+                  size: 22,
+                ),
+                if (activeCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: badgeBgColor,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                      child: Text(
+                        '$activeCount',
+                        textAlign: TextAlign.center,
+                        style: AppFonts.cairoFont(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: badgeTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'طلباتي',
+              style: AppFonts.cairoFont(
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? selectedColor : unselectedColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
