@@ -259,17 +259,6 @@ class DeveloperProfileScreen extends StatelessWidget {
                     onTap: () => _launchUrl(context, 'https://www.snapchat.com/add/a3ats'),
                   ),
 
-                  // CV Download
-                  _buildContactCard(
-                    context,
-                    title: 'تحميل السيرة الذاتية (CV)',
-                    subtitle: 'استعراض وتحميل الملف المعرفي والشهادات',
-                    icon: Icons.cloud_download_outlined,
-                    iconColor: AppColors.primary,
-                    bgColor: AppColors.primary.withAlpha(20),
-                    onTap: () => _launchUrl(context, 'https://drive.google.com/drive/folders/1tgOYqW8_yw40oDV1wuOw_U_7v1pm2lp9'),
-                  ),
-
                   const SizedBox(height: 24),
 
                   // Footer Copyright Notice

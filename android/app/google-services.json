@@ -7,9 +7,28 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:317958059758:android:74aea47489f9b7c7bca5ff",
+        "mobilesdk_app_id": "1:317958059758:android:5c29c7b6948f1318bca5ff",
         "android_client_info": {
-          "package_name": "com.example.wasl"
+          "package_name": "com.ahmed_alattas.wasl"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaiHxvaYSYQ_GwIev6WbaUQlry-wW__g8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:317958059758:android:f549d00bb159a957bca5ff",
+        "android_client_info": {
+          "package_name": "com.ahmedalattas.wasl"
         }
       },
       "oauth_client": [],

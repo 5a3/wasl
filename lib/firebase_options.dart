@@ -42,45 +42,45 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCBk4Tz6kWfgONBAHeYLQWlWfXqugLzvWY',
-    appId: '1:317958059758:web:1565c3f9e3708afebca5ff',
+    appId: '1:317958059758:web:c5a1278921f05b92bca5ff',
     messagingSenderId: '317958059758',
     projectId: 'wasl-cdcb6',
     authDomain: 'wasl-cdcb6.firebaseapp.com',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
-    measurementId: 'G-2PCPEM4QK8',
+    measurementId: 'G-1GLZ07ETRY',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAaiHxvaYSYQ_GwIev6WbaUQlry-wW__g8',
-    appId: '1:317958059758:android:74aea47489f9b7c7bca5ff',
+    appId: '1:317958059758:android:f549d00bb159a957bca5ff',
     messagingSenderId: '317958059758',
     projectId: 'wasl-cdcb6',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCn_UpQ32Sm2u6RDRnZ_hBionzm_ZoJLeQ',
-    appId: '1:317958059758:ios:13ea22b513b4654dbca5ff',
+    appId: '1:317958059758:ios:5ab8bbc2e3ea06cdbca5ff',
     messagingSenderId: '317958059758',
     projectId: 'wasl-cdcb6',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
-    iosBundleId: 'com.example.wasl',
+    iosBundleId: 'com.ahmedalattas.wasl',
   );
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCn_UpQ32Sm2u6RDRnZ_hBionzm_ZoJLeQ',
-    appId: '1:317958059758:ios:13ea22b513b4654dbca5ff',
+    appId: '1:317958059758:ios:5ab8bbc2e3ea06cdbca5ff',
     messagingSenderId: '317958059758',
     projectId: 'wasl-cdcb6',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
-    iosBundleId: 'com.example.wasl',
+    iosBundleId: 'com.ahmedalattas.wasl',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCBk4Tz6kWfgONBAHeYLQWlWfXqugLzvWY',
-    appId: '1:317958059758:web:669e9b69b1d24281bca5ff',
+    appId: '1:317958059758:web:5bba2540825f8bf6bca5ff',
     messagingSenderId: '317958059758',
     projectId: 'wasl-cdcb6',
     authDomain: 'wasl-cdcb6.firebaseapp.com',
     storageBucket: 'wasl-cdcb6.firebasestorage.app',
-    measurementId: 'G-6S413BQ5QZ',
+    measurementId: 'G-521ZMLJ7FZ',
   );
 }

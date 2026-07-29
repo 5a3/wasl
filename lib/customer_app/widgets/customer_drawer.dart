@@ -256,19 +256,15 @@ class CustomerDrawer extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            child: SvgPicture.asset(
-                              'assets/images/logoreport.svg',
-                              height: 55,
-                              fit: BoxFit.contain,
-                            ),
+                          SvgPicture.asset(
+                            'assets/images/logoreport.svg',
+                            height: 55,
+                            fit: BoxFit.contain,
                           ),
-                          Container(
-                            child: SvgPicture.asset(
-                              'assets/images/logo.svg',
-                              height: 55,
-                              fit: BoxFit.contain,
-                            ),
+                          SvgPicture.asset(
+                            'assets/images/logo.svg',
+                            height: 55,
+                            fit: BoxFit.contain,
                           ),
                         ],
                       ),
