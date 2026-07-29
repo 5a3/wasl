@@ -10,7 +10,13 @@ import '../../providers/customer_order_provider.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
   final ScrollController? scrollController;
-  const CustomerOrdersScreen({super.key, this.scrollController});
+  final bool isStandalone;
+
+  const CustomerOrdersScreen({
+    super.key,
+    this.scrollController,
+    this.isStandalone = false,
+  });
 
   @override
   State<CustomerOrdersScreen> createState() => _CustomerOrdersScreenState();
@@ -33,8 +39,20 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<CustomerOrderProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      appBar: widget.isStandalone
+          ? AppBar(
+              title: Text(
+                'طلباتي ومتابعة الشحن',
+                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+              foregroundColor: isDark ? Colors.white : Colors.black87,
+              elevation: 0.5,
+            )
+          : null,
       body: Column(
         children: [
           // Custom pillSegment controller matching Admin app styling

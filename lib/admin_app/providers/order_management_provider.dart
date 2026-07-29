@@ -148,10 +148,11 @@ class OrderManagementProvider extends ChangeNotifier {
     }
   }
 
-  /// Firebase-backed high performance search by exact order number or phone
+  /// Firebase & Local high-performance multi-field search by order number, phone, customer name, or address
   Future<void> searchOrders(String queryText) async {
-    _lastSearchQuery = queryText.trim();
-    if (_lastSearchQuery.isEmpty) {
+    final rawQuery = queryText.trim();
+    _lastSearchQuery = rawQuery;
+    if (rawQuery.isEmpty) {
       _searchResults = [];
       _isSearching = false;
       notifyListeners();
@@ -163,42 +164,99 @@ class OrderManagementProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final query = _lastSearchQuery;
       final List<OrderModel> results = [];
+      final Set<String> foundIds = {};
 
-      // 1. Search by exact Order Number
-      final numSnap = await _firestore
-          .collection(FirebaseConstants.collectionOrders)
-          .where('orderNumber', isEqualTo: query)
-          .get();
-
-      for (var doc in numSnap.docs) {
-        results.add(OrderModel.fromMap(doc.data(), doc.id));
-      }
-
-      // 2. Search by exact Customer Phone
-      final phoneSnap = await _firestore
-          .collection(FirebaseConstants.collectionOrders)
-          .where('customerPhone', isEqualTo: query)
-          .get();
-
-      for (var doc in phoneSnap.docs) {
-        if (!results.any((r) => r.id == doc.id)) {
-          results.add(OrderModel.fromMap(doc.data(), doc.id));
+      void addOrder(OrderModel order) {
+        if (!foundIds.contains(order.id)) {
+          foundIds.add(order.id);
+          results.add(order);
         }
       }
 
-      // 3. Fallback: Search locally in loaded lists by name or address
-      if (results.isEmpty) {
-        final localMatch = [..._activeOrders, ..._completedOrders].where((o) =>
-          o.customerName.toLowerCase().contains(query.toLowerCase()) ||
-          o.deliveryAddress.toLowerCase().contains(query.toLowerCase()) ||
-          o.deliveryZoneName.toLowerCase().contains(query.toLowerCase())
-        ).toList();
-        _searchResults = localMatch;
-      } else {
-        _searchResults = results;
+      final String cleanQuery = rawQuery.toLowerCase().replaceAll('#', '');
+      final String digitsOnly = rawQuery.replaceAll(RegExp(r'[^0-9]'), '');
+
+      // 1. Search locally in active and completed loaded orders (Instant match!)
+      final localOrders = [..._activeOrders, ..._completedOrders];
+      for (var o in localOrders) {
+        final oNumClean = o.orderNumber.toLowerCase();
+        final pClean = o.customerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+        final addPhoneClean = (o.additionalPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+
+        bool isMatch = false;
+        // Match Order Number (e.g. W-12345 or 12345 or #12345)
+        if (oNumClean.contains(cleanQuery) || 
+            (digitsOnly.isNotEmpty && oNumClean.contains(digitsOnly))) {
+          isMatch = true;
+        }
+        // Match Customer Phone or Additional Phone (e.g. 771234567, 0771234567, +967771234567)
+        else if (o.customerPhone.contains(rawQuery) || 
+                 (digitsOnly.length >= 3 && (pClean.contains(digitsOnly) || addPhoneClean.contains(digitsOnly)))) {
+          isMatch = true;
+        }
+        // Match Customer Name, Address, or Zone
+        else if (o.customerName.toLowerCase().contains(cleanQuery) ||
+                 o.deliveryAddress.toLowerCase().contains(cleanQuery) ||
+                 o.deliveryZoneName.toLowerCase().contains(cleanQuery)) {
+          isMatch = true;
+        }
+
+        if (isMatch) {
+          addOrder(o);
+        }
       }
+
+      // 2. Build variants for Firestore Query (for orders not loaded in memory)
+      final List<String> orderNumVariants = [
+        rawQuery,
+        rawQuery.toUpperCase(),
+        cleanQuery,
+        cleanQuery.toUpperCase(),
+        if (digitsOnly.isNotEmpty) ...[
+          digitsOnly,
+          'W-$digitsOnly',
+          'w-$digitsOnly',
+        ]
+      ];
+
+      for (var variant in orderNumVariants) {
+        final numSnap = await _firestore
+            .collection(FirebaseConstants.collectionOrders)
+            .where('orderNumber', isEqualTo: variant)
+            .get();
+        for (var doc in numSnap.docs) {
+          addOrder(OrderModel.fromMap(doc.data(), doc.id));
+        }
+      }
+
+      // 3. Search Firestore by Phone variants
+      final List<String> phoneVariants = [
+        rawQuery,
+        if (digitsOnly.isNotEmpty) ...[
+          digitsOnly,
+          '+967$digitsOnly',
+          if (digitsOnly.startsWith('0')) digitsOnly.substring(1),
+          if (digitsOnly.startsWith('0')) '+967${digitsOnly.substring(1)}',
+          if (digitsOnly.startsWith('967')) '+$digitsOnly',
+        ]
+      ];
+
+      for (var pVar in phoneVariants) {
+        final phoneSnap = await _firestore
+            .collection(FirebaseConstants.collectionOrders)
+            .where('customerPhone', isEqualTo: pVar)
+            .get();
+
+        for (var doc in phoneSnap.docs) {
+          addOrder(OrderModel.fromMap(doc.data(), doc.id));
+        }
+      }
+
+      // Sort results by creation date (newest first)
+      results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _searchResults = results;
+
     } catch (e) {
       _errorMessage = 'خطأ أثناء البحث: ${e.toString()}';
     } finally {

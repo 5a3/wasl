@@ -118,6 +118,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _currentIndex = 0;
     }
 
+    final isDark = themeProvider.isDarkMode;
+
     return Scaffold(
       appBar: AppBar(
         elevation: 1,
@@ -152,10 +154,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       drawer: Drawer(
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         child: Container(
-          decoration: BoxDecoration(
-            color: themeProvider.isDarkMode ? Colors.grey.shade900 : Colors.white,
-          ),
+          color: isDark ? AppColors.darkSurface : Colors.white,
           child: Column(
             children: [
               // Premium Custom Drawer Header
@@ -242,11 +243,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         style: AppFonts.cairoFont(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade500,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                         ),
                       ),
                     ),
-                    const Divider(height: 10, thickness: 0.5),
+                    Divider(height: 10, thickness: 0.5, color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                     const SizedBox(height: 8),
 
                     // Option 1: Reports & Analytics
@@ -255,6 +256,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         icon: Icons.bar_chart_outlined,
                         title: 'التقارير والإحصائيات 📊',
                         subtitle: 'مراجعة المبيعات والأرباح والتصفية',
+                        isDark: isDark,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -269,6 +271,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         icon: Icons.people_alt_outlined,
                         title: 'إدارة المدراء والصلاحيات 👥',
                         subtitle: 'تعيين المشرفين وتعديل صلاحياتهم',
+                        isDark: isDark,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -283,6 +286,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         icon: Icons.campaign_outlined,
                         title: 'إدارة الإعلانات والتنبيهات 📢',
                         subtitle: 'نشر عروض جديدة وتنبيهات للعملاء',
+                        isDark: isDark,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -297,6 +301,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         icon: Icons.notifications_active_outlined,
                         title: 'إشعارات التطبيق 🔔',
                         subtitle: 'إرسال وتصفح الإشعارات العامة للعملاء',
+                        isDark: isDark,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -323,9 +328,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withAlpha(20),
+                      color: AppColors.danger.withAlpha(25),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.danger.withAlpha(40)),
+                      border: Border.all(color: AppColors.danger.withAlpha(50)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -414,32 +419,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required bool isDark,
     required VoidCallback onTap,
   }) {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: Colors.grey.withAlpha(15),
+      color: isDark ? const Color(0xFF2C2C2E) : Colors.grey.withAlpha(15),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withAlpha(20),
+            color: AppColors.primary.withAlpha(25),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: AppColors.primary, size: 22),
         ),
         title: Text(
           title,
-          style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+          style: AppFonts.cairoFont(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
         ),
         subtitle: Text(
           subtitle,
-          style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey.shade600),
+          style: AppFonts.cairoFont(
+            fontSize: 10,
+            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+          ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 12,
+          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+        ),
         onTap: onTap,
       ),
     );

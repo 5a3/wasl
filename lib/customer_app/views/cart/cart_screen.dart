@@ -185,20 +185,29 @@ class _CartScreenState extends State<CartScreen> {
                     style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  DropdownButtonFormField<DeliveryZoneModel>(
-                    value: cartProvider.selectedZone,
-                    decoration: const InputDecoration(
-                      labelText: 'اختر منطقة التوصيل (المحددة من الإدارة)',
-                      prefixIcon: Icon(Icons.map_outlined),
-                    ),
-                    items: zoneProvider.activeZones.map((zone) {
-                      return DropdownMenuItem(
-                        value: zone,
-                        child: Text('${zone.zoneName} (+${Formatters.formatCurrency(zone.deliveryFee)})'),
+                  Builder(
+                    builder: (context) {
+                      final selectedZone = cartProvider.selectedZone;
+                      final validZone = (selectedZone != null && zoneProvider.activeZones.any((z) => z.id == selectedZone.id))
+                          ? zoneProvider.activeZones.firstWhere((z) => z.id == selectedZone.id)
+                          : null;
+
+                      return DropdownButtonFormField<DeliveryZoneModel>(
+                        value: validZone,
+                        decoration: const InputDecoration(
+                          labelText: 'اختر منطقة التوصيل (المحددة من الإدارة)',
+                          prefixIcon: Icon(Icons.map_outlined),
+                        ),
+                        items: zoneProvider.activeZones.map((zone) {
+                          return DropdownMenuItem(
+                            value: zone,
+                            child: Text('${zone.zoneName} (+${Formatters.formatCurrency(zone.deliveryFee)})'),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          cartProvider.setSelectedZone(val);
+                        },
                       );
-                    }).toList(),
-                    onChanged: (val) {
-                      cartProvider.setSelectedZone(val);
                     },
                   ),
                   const SizedBox(height: 14),
@@ -306,15 +315,17 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
@@ -330,7 +341,7 @@ class _CartScreenState extends State<CartScreen> {
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -366,12 +377,12 @@ class _CartScreenState extends State<CartScreen> {
                   style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                _buildConfirmDetailRow('المنطقة:', cartProvider.selectedZone!.zoneName),
-                _buildConfirmDetailRow('العنوان:', _addressController.text.trim()),
+                _buildConfirmDetailRow(context, 'المنطقة:', cartProvider.selectedZone!.zoneName),
+                _buildConfirmDetailRow(context, 'العنوان:', _addressController.text.trim()),
                 if (_phoneController.text.trim().isNotEmpty)
-                  _buildConfirmDetailRow('هاتف بديل:', _phoneController.text.trim()),
+                  _buildConfirmDetailRow(context, 'هاتف بديل:', _phoneController.text.trim()),
                 if (_noteController.text.trim().isNotEmpty)
-                  _buildConfirmDetailRow('الملاحظات:', _noteController.text.trim()),
+                  _buildConfirmDetailRow(context, 'الملاحظات:', _noteController.text.trim()),
                 const Divider(height: 24),
                 
                 // Totals
@@ -421,16 +432,18 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildConfirmDetailRow(String label, String val) {
+  Widget _buildConfirmDetailRow(BuildContext context, String label, String val) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+          Text(label, style: AppFonts.cairoFont(fontSize: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700, fontWeight: FontWeight.bold)),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(val, style: AppFonts.cairoFont(fontSize: 12)),
+            child: Text(val, style: AppFonts.cairoFont(fontSize: 12, color: isDark ? AppColors.darkTextPrimary : Colors.black87)),
           ),
         ],
       ),

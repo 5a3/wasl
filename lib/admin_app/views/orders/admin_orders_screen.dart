@@ -74,7 +74,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderManagementProvider>(context);
-    final isSearching = _searchQuery.trim().isNotEmpty;
 
     return Scaffold(
       body: Column(
@@ -88,7 +87,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 setState(() {
                   _searchQuery = val;
                 });
-                orderProvider.searchOrders(val);
               },
               decoration: InputDecoration(
                 hintText: 'ابحث برقم الطلب، الهاتف، أو الاسم...',
@@ -98,7 +96,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          orderProvider.clearSearch();
                           setState(() {
                             _searchQuery = '';
                           });
@@ -123,10 +120,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             ),
           ),
 
-          // Custom sliding segmented pill selector (iOS style switch)
-          if (!isSearching) _buildCustomSegmentedControl(orderProvider),
+          // Custom sliding segmented pill selector (iOS style switch - always visible!)
+          _buildCustomSegmentedControl(orderProvider),
 
-          // Main View Logic (Search results vs custom tabs switch)
+          // Main View Logic (Active Orders vs Completed Orders with instant local search filtering)
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -134,11 +131,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 opacity: animation,
                 child: child,
               ),
-              child: isSearching
-                  ? _buildSearchResultsView(orderProvider)
-                  : (_selectedTab == 0
-                      ? _buildActiveOrdersTab(orderProvider)
-                      : _buildCompletedOrdersTab(orderProvider)),
+              child: _selectedTab == 0
+                  ? _buildActiveOrdersTab(orderProvider)
+                  : _buildCompletedOrdersTab(orderProvider),
             ),
           ),
         ],
@@ -292,54 +287,37 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     );
   }
 
-  Widget _buildSearchResultsView(OrderManagementProvider provider) {
-    if (provider.isSearching) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(height: 12),
-            Text('جاري البحث في قاعدة البيانات...'),
-          ],
-        ),
-      );
-    }
+  /// Instant memory filter for the currently selected tab (0 extra reads, 0ms lag!)
+  List<OrderModel> _filterOrders(List<OrderModel> orders) {
+    final q = _searchQuery.trim().toLowerCase().replaceAll('#', '');
+    if (q.isEmpty) return orders;
 
-    final results = provider.searchResults;
+    final digits = _searchQuery.replaceAll(RegExp(r'[^0-9]'), '');
 
-    if (results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(
-              'لا توجد نتائج مطابقة 🔍',
-              style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      );
-    }
+    return orders.where((o) {
+      final oNumClean = o.orderNumber.toLowerCase();
+      final pClean = o.customerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+      final addPhoneClean = (o.additionalPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
 
-    return Column(
-      key: const ValueKey('searchResultsView'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-          child: Text(
-            'نتائج البحث عن "$_searchQuery": (${results.length} طلب)',
-            style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
-          ),
-        ),
-        Expanded(
-          child: _buildResponsiveGrid(results, provider, isCompleted: false),
-        ),
-      ],
-    );
+      // Match Order Number (e.g. W-12345 or 12345 or #12345)
+      if (oNumClean.contains(q) || 
+          (digits.isNotEmpty && oNumClean.contains(digits))) {
+        return true;
+      }
+      // Match Customer Phone or Additional Phone (e.g. 771234567, 0771234567, +967771234567)
+      if (o.customerPhone.contains(q) || 
+          (digits.length >= 3 && (pClean.contains(digits) || addPhoneClean.contains(digits)))) {
+        return true;
+      }
+      // Match Customer Name, Address, or Zone
+      if (o.customerName.toLowerCase().contains(q) ||
+          o.deliveryAddress.toLowerCase().contains(q) ||
+          o.deliveryZoneName.toLowerCase().contains(q)) {
+        return true;
+      }
+
+      return false;
+    }).toList();
   }
 
   Widget _buildActiveOrdersTab(OrderManagementProvider provider) {
@@ -347,17 +325,22 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       return const LoadingIndicator(message: 'جاري الاستماع للطلبات النشطة...');
     }
 
-    if (provider.activeOrders.isEmpty) {
+    final filtered = _filterOrders(provider.activeOrders);
+
+    if (filtered.isEmpty) {
       return Center(
-        key: const ValueKey('activeEmpty'),
+        key: ValueKey('activeEmpty_${_searchQuery.isNotEmpty}'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.restaurant_menu_outlined, size: 64, color: Colors.grey),
+            Icon(_searchQuery.isNotEmpty ? Icons.search_off_outlined : Icons.restaurant_menu_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 12),
             Text(
-              'لا توجد طلبات نشطة حالياً ⚡',
+              _searchQuery.isNotEmpty 
+                  ? 'لا توجد نتائج مطابقة لـ "$_searchQuery" في الطلبات المباشرة 🔍' 
+                  : 'لا توجد طلبات نشطة حالياً ⚡',
               style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -370,7 +353,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       onRefresh: () async {
         provider.listenToActiveOrders();
       },
-      child: _buildResponsiveGrid(provider.activeOrders, provider, isCompleted: false),
+      child: _buildResponsiveGrid(filtered, provider, isCompleted: false),
     );
   }
 
@@ -379,17 +362,22 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       return const LoadingIndicator(message: 'جاري تحميل سجل الطلبات...');
     }
 
-    if (provider.completedOrders.isEmpty) {
+    final filtered = _filterOrders(provider.completedOrders);
+
+    if (filtered.isEmpty) {
       return Center(
-        key: const ValueKey('completedEmpty'),
+        key: ValueKey('completedEmpty_${_searchQuery.isNotEmpty}'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.history_toggle_off, size: 64, color: Colors.grey),
+            Icon(_searchQuery.isNotEmpty ? Icons.search_off_outlined : Icons.history_toggle_off, size: 64, color: Colors.grey),
             const SizedBox(height: 12),
             Text(
-              'سجل الطلبات فارغ حالياً 📦',
+              _searchQuery.isNotEmpty 
+                  ? 'لا توجد نتائج مطابقة لـ "$_searchQuery" في سجل الطلبات 📦' 
+                  : 'سجل الطلبات فارغ حالياً 📦',
               style: AppFonts.cairoFont(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -402,7 +390,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       onRefresh: () async {
         await provider.refreshCompletedOrders();
       },
-      child: _buildResponsiveGrid(provider.completedOrders, provider, isCompleted: true),
+      child: _buildResponsiveGrid(filtered, provider, isCompleted: true),
     );
   }
 
@@ -532,17 +520,25 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.receipt_long, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 6),
-                        Text(
-                          'طلب #${order.orderNumber}',
-                          style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'طلب #${order.orderNumber}',
+                              style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 6),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Status Badge
                         Container(
@@ -561,7 +557,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         // Delete Button with tooltip
                         GestureDetector(
                           onTap: () => _deleteOrderConfirm(order, provider),

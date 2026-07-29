@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
-import '../../../core/services/fcm_service.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_notification_provider.dart';
+import '../../widgets/customer_drawer.dart';
 import '../notifications/customer_notifications_screen.dart';
 import '../cart/cart_screen.dart';
 import '../favorites/favorites_screen.dart';
@@ -35,30 +36,65 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final notificationProvider = Provider.of<CustomerNotificationProvider>(context);
+    final customerAuth = Provider.of<CustomerAuthProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final customer = customerAuth.currentCustomer;
+    final fullName = customer?.fullName.trim() ?? '';
+    final firstName = fullName.isNotEmpty ? fullName.split(' ').first : 'العميل';
+
+    String appBarTitle;
+    switch (_currentIndex) {
+      case 0:
+        appBarTitle = 'مرحباً، $firstName';
+        break;
+      case 1:
+        appBarTitle = 'الأطباق المفضلة';
+        break;
+      case 2:
+        appBarTitle = 'سلة الطلبات';
+        break;
+      case 3:
+        appBarTitle = 'طلباتي ومتابعة الشحن';
+        break;
+      case 4:
+        appBarTitle = 'الملف الشخصي والحساب';
+        break;
+      default:
+        appBarTitle = 'مرحباً، $firstName';
+    }
+
     return Scaffold(
+      resizeToAvoidBottomInset: false,
+      drawer: const CustomerDrawer(),
       appBar: AppBar(
-        title: const Text('وصل لي - قائمة الوجبات والمشروبات'),
+        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded, size: 26),
+            tooltip: 'القائمة الرئيسية',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Text(
+          appBarTitle,
+          style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         actions: [
-          // Notification Action Button with Badge
+          // Instant Notification Action Button with Badge (No lag!)
           Stack(
             alignment: Alignment.center,
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, size: 26),
                 tooltip: 'الإشعارات',
-                onPressed: () async {
-                  // Request notification permission if not granted yet
-                  await FcmService.requestPermissions();
-
-                  if (context.mounted) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CustomerNotificationsScreen(),
-                      ),
-                    );
-                  }
+                onPressed: () {
+                  // Instant navigation without blocking permissions call
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerNotificationsScreen(),
+                    ),
+                  );
                 },
               ),
               if (notificationProvider.unreadCount > 0)
@@ -129,20 +165,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         borderRadius: BorderRadius.circular(30),
         width: MediaQuery.of(context).size.width - 32,
         hideOnScroll: true,
-        body: (context, scrollController) {
+        body: (context, controller) {
           switch (_currentIndex) {
             case 0:
-              return MenuScreen(scrollController: scrollController);
+              return MenuScreen(scrollController: controller);
             case 1:
-              return FavoritesScreen(scrollController: scrollController);
+              return FavoritesScreen(scrollController: controller);
             case 2:
               return const CartScreen();
             case 3:
-              return CustomerOrdersScreen(scrollController: scrollController);
+              return CustomerOrdersScreen(scrollController: controller);
             case 4:
               return const ProfileScreen();
             default:
-              return MenuScreen(scrollController: scrollController);
+              return MenuScreen(scrollController: controller);
           }
         },
         child: Container(
@@ -181,6 +217,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -224,6 +261,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Stack(

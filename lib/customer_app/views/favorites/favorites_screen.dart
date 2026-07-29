@@ -9,7 +9,13 @@ import '../../providers/favorite_provider.dart';
 
 class FavoritesScreen extends StatelessWidget {
   final ScrollController? scrollController;
-  const FavoritesScreen({super.key, this.scrollController});
+  final bool isStandalone;
+
+  const FavoritesScreen({
+    super.key,
+    this.scrollController,
+    this.isStandalone = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +27,20 @@ class FavoritesScreen extends StatelessWidget {
         .where((p) => favProvider.isFavorite(p.id))
         .toList();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      appBar: isStandalone
+          ? AppBar(
+              title: Text(
+                'الأطباق المفضلة',
+                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+              foregroundColor: isDark ? Colors.white : Colors.black87,
+              elevation: 0.5,
+            )
+          : null,
       body: favoriteProducts.isEmpty
           ? Center(
               child: Column(

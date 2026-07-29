@@ -219,7 +219,10 @@ class OrderReceiptDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Dialog(
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 450),
@@ -257,16 +260,16 @@ class OrderReceiptDialog extends StatelessWidget {
                 const Divider(height: 24),
 
                 // Customer & Delivery Metadata
-                _buildInfoRow('اسم العميل:', order.customerName),
-                _buildInfoRow('هاتف التواصل الأساسي:', order.customerPhone),
+                _buildInfoRow(context, 'اسم العميل:', order.customerName),
+                _buildInfoRow(context, 'هاتف التواصل الأساسي:', order.customerPhone),
                 if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty)
-                  _buildInfoRow('هاتف التواصل البديل:', order.additionalPhone!),
-                _buildInfoRow('منطقة التوصيل:', order.deliveryZoneName),
-                _buildInfoRow('عنوان التوصيل:', order.deliveryAddress),
-                _buildInfoRow('تاريخ الطلب:', Formatters.formatDateTime(order.createdAt)),
-                _buildInfoRow('حالة الطلب:', order.statusArabic),
+                  _buildInfoRow(context, 'هاتف التواصل البديل:', order.additionalPhone!),
+                _buildInfoRow(context, 'منطقة التوصيل:', order.deliveryZoneName),
+                _buildInfoRow(context, 'عنوان التوصيل:', order.deliveryAddress),
+                _buildInfoRow(context, 'تاريخ الطلب:', Formatters.formatDateTime(order.createdAt)),
+                _buildInfoRow(context, 'حالة الطلب:', order.statusArabic),
                 if (order.note != null && order.note!.trim().isNotEmpty)
-                  _buildInfoRow('ملاحظات الطلب:', order.note!),
+                  _buildInfoRow(context, 'ملاحظات الطلب:', order.note!),
 
                 const SizedBox(height: 16),
                 Text(
@@ -278,8 +281,11 @@ class OrderReceiptDialog extends StatelessWidget {
                 // Items Table
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDark ? AppColors.darkBackground : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+                    ),
                   ),
                   child: ListView.separated(
                     shrinkWrap: true,
@@ -406,7 +412,9 @@ class OrderReceiptDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -416,13 +424,20 @@ class OrderReceiptDialog extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade600),
+              style: AppFonts.cairoFont(
+                fontSize: 13,
+                color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+              style: AppFonts.cairoFont(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+              ),
             ),
           ),
         ],

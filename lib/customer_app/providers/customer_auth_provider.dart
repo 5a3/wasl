@@ -167,7 +167,137 @@ class CustomerAuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'خطأ في عملية تسجيل الدخول: ${e.toString()}';
+      _errorMessage = 'حدث خطأ أثناء تسجيل الدخول: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Check if user exists by username or phone for password reset (Optimized: Max 1 Read)
+  Future<bool> checkUserExists(String identifier) async {
+    final cleanId = identifier.trim();
+    if (cleanId.isEmpty) return false;
+
+    try {
+      // Determine primary field based on input format to execute only 1 query
+      final isDigitsOnly = RegExp(r'^[0-9+]+$').hasMatch(cleanId);
+      final primaryField = isDigitsOnly ? 'phone' : 'username';
+
+      var query = await _firestore
+          .collection(FirebaseConstants.collectionCustomers)
+          .where(primaryField, isEqualTo: cleanId)
+          .limit(1)
+          .get(const GetOptions(source: Source.serverAndCache));
+
+      if (query.docs.isEmpty) {
+        final secondaryField = isDigitsOnly ? 'username' : 'phone';
+        query = await _firestore
+            .collection(FirebaseConstants.collectionCustomers)
+            .where(secondaryField, isEqualTo: cleanId)
+            .limit(1)
+            .get(const GetOptions(source: Source.serverAndCache));
+      }
+
+      return query.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Update Customer Address Only
+  Future<bool> updateCustomerAddress(String newAddress) async {
+    if (_currentCustomer == null) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final cleanAddress = newAddress.trim();
+      await _firestore
+          .collection(FirebaseConstants.collectionCustomers)
+          .doc(_currentCustomer!.id)
+          .update({
+        'address': cleanAddress,
+        'updatedAt': Timestamp.now(),
+      });
+
+      _currentCustomer = UserModel(
+        id: _currentCustomer!.id,
+        username: _currentCustomer!.username,
+        fullName: _currentCustomer!.fullName,
+        phone: _currentCustomer!.phone,
+        email: _currentCustomer!.email,
+        address: cleanAddress,
+        password: _currentCustomer!.password,
+        isBlocked: _currentCustomer!.isBlocked,
+        createdAt: _currentCustomer!.createdAt,
+      );
+
+      await StorageService.saveCustomerSession(
+        customerId: _currentCustomer!.id,
+        username: _currentCustomer!.username,
+        name: _currentCustomer!.fullName,
+        phone: _currentCustomer!.phone,
+        address: cleanAddress,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'فشل تحديث العنوان: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Update Customer Password with old password validation
+  Future<bool> updateCustomerPassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    if (_currentCustomer == null) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      if (_currentCustomer!.password != oldPassword) {
+        _errorMessage = 'الرمز السري القديم غير صحيح';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await _firestore
+          .collection(FirebaseConstants.collectionCustomers)
+          .doc(_currentCustomer!.id)
+          .update({
+        'password': newPassword,
+        'updatedAt': Timestamp.now(),
+      });
+
+      _currentCustomer = UserModel(
+        id: _currentCustomer!.id,
+        username: _currentCustomer!.username,
+        fullName: _currentCustomer!.fullName,
+        phone: _currentCustomer!.phone,
+        email: _currentCustomer!.email,
+        address: _currentCustomer!.address,
+        password: newPassword,
+        isBlocked: _currentCustomer!.isBlocked,
+        createdAt: _currentCustomer!.createdAt,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'فشل تغيير الرمز السري: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
       return false;

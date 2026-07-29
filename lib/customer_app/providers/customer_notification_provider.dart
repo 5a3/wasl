@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/firebase_constants.dart';
-import '../../core/services/fcm_service.dart';
 import '../../shared/models/notification_model.dart';
 
 /// Provider for Customer App to fetch notifications, listen to real-time broadcasts,

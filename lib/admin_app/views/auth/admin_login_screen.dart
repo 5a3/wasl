@@ -116,7 +116,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 ),
                 validator: (val) => Validators.validateRequired(val, 'كلمة المرور'),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 50),
               CustomButton(
                 text: 'تسجيل الدخول',
                 isLoading: authProvider.isLoading,

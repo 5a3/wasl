@@ -9,6 +9,27 @@ class Validators {
     return null;
   }
 
+  static String? validateFullName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'يرجى إدخال الاسم الكامل';
+    }
+    final words = value.trim().split(RegExp(r'\s+'));
+    if (words.length < 3) {
+      return 'يرجى إدخال الاسم الثلاثي على الأقل (مثال: أحمد محمد العطاس)';
+    }
+    return null;
+  }
+
+  static String? validateUsername(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'يرجى إدخال اسم المستخدم';
+    }
+    if (value.trim().length < 4) {
+      return 'اسم المستخدم يجب أن لا يقل عن 4 أحرف/أرقام';
+    }
+    return null;
+  }
+
   static String? validateYemeniPhone(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'يرجى إدخال رقم الهاتف';

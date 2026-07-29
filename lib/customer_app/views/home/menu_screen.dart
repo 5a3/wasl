@@ -65,219 +65,248 @@ class _MenuScreenState extends State<MenuScreen> {
       return matchesCategory && matchesSearch;
     }).toList();
 
-    return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Ads Carousel Slider (using carousel_slider package)
-          _buildCarouselAds(adProvider),
+    return CustomScrollView(
+      controller: widget.scrollController,
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // 1. Ads Carousel Slider (Scrolls off screen and disappears)
+        SliverToBoxAdapter(
+          child: _buildCarouselAds(adProvider),
+        ),
 
-          // 2. Search Text Field
-          _buildSearchBar(),
-
-          // 3. Categories Circular Avatars List (shimmer and full cached image)
-          _buildCategoriesAvatars(catProvider),
-
-          // 4. Section Title & Product Count
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // 2. Sticky Header (Search Bar + Categories + Section Title stay pinned)
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _StickyMenuHeaderDelegate(
+            height: 196.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _selectedCategoryId == null
-                      ? 'جميع الأطباق والوجبات 🍔'
-                      : '${catProvider.categories.firstWhere((c) => c.id == _selectedCategoryId).name} 🍲',
-                  style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'عدد الأصناف: ${filteredProducts.length}',
-                  style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600),
-                ),
+                _buildSearchBar(),
+                _buildCategoriesAvatars(catProvider),
+                _buildSectionTitle(catProvider, filteredProducts.length),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(height: 1),
-          ),
+        ),
 
-          // 5. Memory-efficient Lazy Loading Products list
-          Expanded(
-            child: prodProvider.isLoading
-                ? _buildShimmerProducts()
-                : filteredProducts.isEmpty
-                    ? Center(
-                        child: Text(
-                          _searchQuery.isNotEmpty ? 'لا توجد وجبات تطابق البحث 🔍' : 'لا توجد أصناف متوفرة في هذه الفئة',
-                          style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
+        // 5. Memory-efficient Lazy Loading Products list
+        if (prodProvider.isLoading)
+          SliverToBoxAdapter(
+            child: _buildShimmerProducts(),
+          )
+        else if (filteredProducts.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  _searchQuery.isNotEmpty ? 'لا توجد نتائج تطابق البحث' : 'لا توجد أصناف متوفرة في هذه الفئة',
+                  style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
+                ),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (ctx, index) {
+                  final product = filteredProducts[index];
+                  final isFav = favProvider.isFavorite(product.id);
+                  final isInCart = cartProvider.items.containsKey(product.id);
+                  final qty = isInCart ? cartProvider.items[product.id]!.quantity : 0;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => ProductDetailsScreen(product: product)),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+                          width: 1,
                         ),
-                      )
-                    : ListView.builder(
-                        controller: widget.scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        itemCount: filteredProducts.length,
-                        itemBuilder: (ctx, index) {
-                          final product = filteredProducts[index];
-                          final isFav = favProvider.isFavorite(product.id);
-                          final isInCart = cartProvider.items.containsKey(product.id);
-                          final qty = isInCart ? cartProvider.items[product.id]!.quantity : 0;
-
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => ProductDetailsScreen(product: product)),
-                              );
-                            },
-                            child: Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Row(
-                                  children: [
-                                    // Product Image
-                                    Hero(
-                                      tag: 'product_image_${product.id}',
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: CustomCachedImage(
-                                          imageUrl: product.images.isNotEmpty ? product.images.first : '',
-                                          width: 85,
-                                          height: 85,
-                                          errorWidget: const Icon(Icons.fastfood, size: 36, color: Colors.grey),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(isDark ? 20 : 6),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Product Image Card
+                          Stack(
+                            children: [
+                              Hero(
+                                tag: 'product_image_${product.id}',
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: CustomCachedImage(
+                                    imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                                    width: 95,
+                                    height: 95,
+                                    fit: BoxFit.cover,
+                                    errorWidget: const Icon(Icons.fastfood, size: 36, color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                              if (!product.isAvailable)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withAlpha(140),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'غير متوفر',
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 14),
 
-                                    // Product details
+                          // Product details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  product.name,
-                                                  style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              IconButton(
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                                icon: Icon(
-                                                  isFav ? Icons.favorite : Icons.favorite_border,
-                                                  color: isFav ? AppColors.danger : Colors.grey,
-                                                  size: 20,
-                                                ),
-                                                onPressed: () {
-                                                  favProvider.toggleFavorite(product.id);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            product.description,
-                                            style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade600),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                Formatters.formatCurrency(product.price),
-                                                style: AppFonts.cairoFont(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.primary,
-                                                ),
-                                              ),
-
-                                              // Interactive add counter
-                                              if (product.isAvailable)
-                                                Builder(
-                                                  builder: (ctx) {
-                                                    if (isInCart) {
-                                                      return Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          IconButton(
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(),
-                                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.danger, size: 22),
-                                                            onPressed: () {
-                                                              cartProvider.decrementItem(product.id);
-                                                            },
-                                                          ),
-                                                          const SizedBox(width: 8),
-                                                          Text(
-                                                            '$qty',
-                                                            style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                                          ),
-                                                          const SizedBox(width: 8),
-                                                          IconButton(
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(),
-                                                            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 22),
-                                                            onPressed: () {
-                                                              cartProvider.addToCart(product);
-                                                            },
-                                                          ),
-                                                        ],
-                                                      );
-                                                    } else {
-                                                      return ElevatedButton(
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: AppColors.primary,
-                                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                          minimumSize: Size.zero,
-                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                        ),
-                                                        onPressed: () {
-                                                          cartProvider.addToCart(product);
-                                                          CustomDialog.showSuccessSnackBar(context, 'تم إضافة ${product.name} إلى السلة 🍔');
-                                                        },
-                                                        child: Text(
-                                                          'إضافة للطلب',
-                                                          style: AppFonts.cairoFont(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                                                        ),
-                                                      );
-                                                    }
-                                                  },
-                                                )
-                                              else
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(6)),
-                                                  child: Text(
-                                                    'غير متوفر',
-                                                    style: AppFonts.cairoFont(fontSize: 9, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ],
+                                      child: Text(
+                                        product.name,
+                                        style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                    ),
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: Icon(
+                                        isFav ? Icons.favorite : Icons.favorite_border,
+                                        color: isFav ? AppColors.danger : Colors.grey.shade400,
+                                        size: 22,
+                                      ),
+                                      onPressed: () {
+                                        favProvider.toggleFavorite(product.id);
+                                      },
                                     ),
                                   ],
                                 ),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  product.description,
+                                  style: AppFonts.cairoFont(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, height: 1.3),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      Formatters.formatCurrency(product.price),
+                                      style: AppFonts.cairoFont(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+
+                                    // Add to cart interactive controls
+                                    if (product.isAvailable)
+                                      Builder(
+                                        builder: (ctx) {
+                                          if (isInCart) {
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withAlpha(15),
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: AppColors.primary.withAlpha(60)),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  InkWell(
+                                                    onTap: () => cartProvider.decrementItem(product.id),
+                                                    child: const Icon(Icons.remove, color: AppColors.danger, size: 18),
+                                                  ),
+                                                  Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                    child: Text(
+                                                      '$qty',
+                                                      style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                                    ),
+                                                  ),
+                                                  InkWell(
+                                                    onTap: () => cartProvider.addToCart(product),
+                                                    child: const Icon(Icons.add, color: AppColors.primary, size: 18),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          } else {
+                                            return ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.primary,
+                                                elevation: 0,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                              icon: const Icon(Icons.add_shopping_cart, size: 14, color: Colors.white),
+                                              label: Text(
+                                                'إضافة للطلب',
+                                                style: AppFonts.cairoFont(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                                              ),
+                                              onPressed: () {
+                                                cartProvider.addToCart(product);
+                                                CustomDialog.showSuccessSnackBar(context, 'تم إضافة ${product.name} إلى السلة');
+                                              },
+                                            );
+                                          }
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
+                    ),
+                  );
+                },
+                childCount: filteredProducts.length,
+              ),
+            ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -613,6 +642,8 @@ class _MenuScreenState extends State<MenuScreen> {
   /// Shimmer placeholder loader for products list
   Widget _buildShimmerProducts() {
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: 4,
       itemBuilder: (ctx, idx) => Card(
@@ -652,5 +683,94 @@ class _MenuScreenState extends State<MenuScreen> {
         ),
       ),
     );
+  }
+
+  /// Section Title & Products Count Header
+  Widget _buildSectionTitle(CategoryProvider catProvider, int count) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.restaurant_menu, size: 20, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _selectedCategoryId == null
+                            ? 'جميع الأطباق والوجبات'
+                            : (catProvider.categories.any((c) => c.id == _selectedCategoryId)
+                                ? catProvider.categories.firstWhere((c) => c.id == _selectedCategoryId).name
+                                : 'الأصناف'),
+                        style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'الأصناف: $count',
+                  style: AppFonts.cairoFont(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(height: 1, thickness: 1),
+        ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+}
+
+/// Custom Persistent Header Delegate to keep Search Bar, Categories & Section Title pinned on scroll
+class _StickyMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  _StickyMenuHeaderDelegate({
+    required this.child,
+    this.height = 196.0,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDark ? AppColors.darkBackground : Theme.of(context).scaffoldBackgroundColor,
+      height: height,
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  bool shouldRebuild(covariant _StickyMenuHeaderDelegate oldDelegate) {
+    return oldDelegate.height != height || oldDelegate.child != child;
   }
 }
