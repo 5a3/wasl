@@ -64,8 +64,8 @@ void main() async {
       return true;
     };
 
-    // Enable automatic Crashlytics collection in production
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+    // Enable automatic Crashlytics collection in both debug and release modes
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
     // Initialize FCM Messaging & Local Notifications
     await FcmService.initialize();
