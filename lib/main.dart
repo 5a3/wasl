@@ -35,6 +35,7 @@ import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
 import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
+import 'shared/providers/store_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +79,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()),
+        ChangeNotifierProvider(create: (_) => StoreProvider()),
         ChangeNotifierProvider(create: (_) => AdminAuthProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),

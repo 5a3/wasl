@@ -13,6 +13,7 @@ import '../cart/cart_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../my_orders/customer_orders_screen.dart';
 import 'menu_screen.dart';
+import '../../../shared/providers/store_provider.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -168,18 +169,79 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         width: MediaQuery.of(context).size.width - 32,
         hideOnScroll: true,
         body: (context, controller) {
+          final storeProvider = Provider.of<StoreProvider>(context);
+
+          Widget activeScreen;
           switch (_currentIndex) {
             case 0:
-              return MenuScreen(scrollController: controller);
+              activeScreen = MenuScreen(scrollController: controller);
+              break;
             case 1:
-              return FavoritesScreen(scrollController: controller);
+              activeScreen = FavoritesScreen(scrollController: controller);
+              break;
             case 2:
-              return const CartScreen();
+              activeScreen = const CartScreen();
+              break;
             case 3:
-              return CustomerOrdersScreen(scrollController: controller);
+              activeScreen = CustomerOrdersScreen(scrollController: controller);
+              break;
             default:
-              return MenuScreen(scrollController: controller);
+              activeScreen = MenuScreen(scrollController: controller);
           }
+
+          if (!storeProvider.isOpen) {
+            return Column(
+              children: [
+                // Store Closed Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.danger.withAlpha(60),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.storefront_outlined, color: Colors.white, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'المطعم مغلق حالياً 🔴',
+                              style: AppFonts.cairoFont(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              storeProvider.closedReason ?? 'يسعدنا خدمتكم واستقبال طلباتكم في أوقات العمل الرسمية.',
+                              style: AppFonts.cairoFont(
+                                color: Colors.white.withAlpha(230),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(child: activeScreen),
+              ],
+            );
+          }
+
+          return activeScreen;
         },
         child: Container(
           height: 60,

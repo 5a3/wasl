@@ -13,6 +13,7 @@ import '../reports/admin_reports_screen.dart';
 import '../sub_admins/admin_sub_admins_screen.dart';
 import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
+import '../../../shared/providers/store_provider.dart';
 
 class DashboardTab {
   final Widget screen;
@@ -236,6 +237,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   children: [
+                    // Store Open / Closed Interactive Status Card
+                    _buildStoreStatusCard(context, isDark),
+                    const SizedBox(height: 8),
+
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                       child: Text(
@@ -458,6 +463,202 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
         ),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildStoreStatusCard(BuildContext context, bool isDark) {
+    return Consumer<StoreProvider>(
+      builder: (context, storeProvider, child) {
+        final isOpen = storeProvider.isOpen;
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isOpen ? Colors.green.withAlpha(18) : AppColors.danger.withAlpha(18),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isOpen ? Colors.green.withAlpha(80) : AppColors.danger.withAlpha(80),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isOpen ? Colors.green : AppColors.danger,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isOpen ? Icons.storefront : Icons.storefront_outlined,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isOpen ? 'المحل مفتوح حالياً 🟢' : 'المحل مغلق حالياً 🔴',
+                                style: AppFonts.cairoFont(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isOpen
+                                      ? (isDark ? Colors.green.shade300 : Colors.green.shade800)
+                                      : (isDark ? Colors.red.shade300 : AppColors.danger),
+                                ),
+                              ),
+                              Text(
+                                isOpen ? 'العملاء يستطيعون الطلب' : 'تم تقييد واستقبال الطلبات',
+                                style: AppFonts.cairoFont(
+                                  fontSize: 10,
+                                  color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: isOpen,
+                    activeColor: Colors.green,
+                    inactiveThumbColor: AppColors.danger,
+                    inactiveTrackColor: AppColors.danger.withAlpha(40),
+                    onChanged: (value) => _toggleStoreStatusDialog(context, storeProvider, value),
+                  ),
+                ],
+              ),
+              if (!isOpen && storeProvider.closedReason != null && storeProvider.closedReason!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkBackground : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'سبب الإغلاق: ${storeProvider.closedReason}',
+                    style: AppFonts.cairoFont(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _toggleStoreStatusDialog(BuildContext context, StoreProvider storeProvider, bool newStatus) {
+    if (newStatus) {
+      // Re-opening store
+      storeProvider.updateStoreStatus(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم فتح المحل بنجاح! يستطيع العملاء الطلب الآن 🟢', style: AppFonts.cairoFont(color: Colors.white)),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      return;
+    }
+
+    // Closing store: show dialog for optional closed reason
+    final reasonController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.storefront_outlined, color: AppColors.danger, size: 24),
+            const SizedBox(width: 8),
+            Text('إغلاق المحل 🔴', style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'عند إغلاق المحل، سيتم إظهار تنبيه للعملاء وتوقف زر إتمام الطلب بالسلة فوراً.',
+              style: AppFonts.cairoFont(fontSize: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            Text('سبب الإغلاق (اختياري):', style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                hintText: 'مثال: مغلق لصلاة الجمعة / انتهاء ساعات العمل',
+                hintStyle: AppFonts.cairoFont(fontSize: 11, color: Colors.grey),
+                filled: true,
+                fillColor: isDark ? AppColors.darkBackground : Colors.grey.shade100,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                'مغلق لصلاة الجمعة 🕌',
+                'انتهت ساعات العمل 🌙',
+                'مغلق للصيانة 🛠️',
+              ].map((reason) => ActionChip(
+                label: Text(reason, style: AppFonts.cairoFont(fontSize: 10)),
+                backgroundColor: isDark ? AppColors.darkBackground : Colors.grey.shade200,
+                onPressed: () {
+                  reasonController.text = reason;
+                },
+              )).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('إلغاء', style: AppFonts.cairoFont(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await storeProvider.updateStoreStatus(false, reason: reasonController.text);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم إغلاق المحل وتقييد الطلبات بنجاح 🔴', style: AppFonts.cairoFont(color: Colors.white)),
+                    backgroundColor: AppColors.danger,
+                  ),
+                );
+              }
+            },
+            child: Text('تأكيد الإغلاق', style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

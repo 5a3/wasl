@@ -12,6 +12,7 @@ import '../../../shared/models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_order_provider.dart';
+import '../../../shared/providers/store_provider.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -46,6 +47,12 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _placeOrder() async {
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    if (!storeProvider.isOpen) {
+      CustomDialog.showErrorSnackBar(context, 'المحل مغلق حالياً 🔴 لا يمكن إرسال الطلبات الآن.');
+      return;
+    }
+
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final orderProvider = Provider.of<CustomerOrderProvider>(context, listen: false);
     final authProvider = Provider.of<CustomerAuthProvider>(context, listen: false);
@@ -101,6 +108,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final zoneProvider = Provider.of<DeliveryZoneProvider>(context);
+    final storeProvider = Provider.of<StoreProvider>(context);
 
     return Scaffold(
       body: cartProvider.itemList.isEmpty
@@ -275,10 +283,44 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  CustomButton(
-                    text: 'مراجعة وتأكيد الطلب الآن 🚀',
-                    onPressed: () => _showOrderConfirmation(cartProvider),
-                  ),
+                  if (!storeProvider.isOpen) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withAlpha(20),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.danger.withAlpha(80)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: AppColors.danger),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'المحل مغلق حالياً 🔴 (${storeProvider.closedReason ?? "لا يمكن استقبال الطلبات الآن"})',
+                              style: AppFonts.cairoFont(
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    CustomButton(
+                      text: 'المحل مغلق حالياً - لا يمكن إتمام الطلب 🔴',
+                      onPressed: null,
+                      backgroundColor: Colors.grey.shade400,
+                    ),
+                  ] else ...[
+                    CustomButton(
+                      text: 'مراجعة وتأكيد الطلب الآن 🚀',
+                      onPressed: () => _showOrderConfirmation(cartProvider),
+                    ),
+                  ],
                   const SizedBox(height: 80), // Spacing to avoid overlap with floating bottom bar
                 ],
               ),
