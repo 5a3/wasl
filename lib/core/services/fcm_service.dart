@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/firebase_constants.dart';
@@ -178,10 +179,18 @@ class FcmService {
       if (granted) {
         return true;
       } else if (context.mounted) {
-        CustomDialog.showErrorSnackBar(
-          context,
-          'يلزم تفعيل صلاحية الإشعارات لمتابعة التحديثات والعروض',
+        final openSettings = await CustomDialog.showConfirmDialog(
+          context: context,
+          title: 'تفعيل الإشعارات من الإعدادات ⚙️',
+          message:
+              'لقد قمت برفض الصلاحية سابقاً من أندرويد. لتفعيل الإشعارات ومتابعة حالة طلبك، يرجى فتح إعدادات الهاتف وتفعيل الإشعارات لتطبيق وصل لي.',
+          confirmText: 'فتح الإعدادات ⚙️',
+          cancelText: 'إلغاء',
+          confirmColor: AppColors.primary,
         );
+        if (openSettings == true) {
+          await openAppSettings();
+        }
       }
     }
 
