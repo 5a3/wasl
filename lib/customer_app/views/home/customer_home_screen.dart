@@ -12,6 +12,9 @@ import '../notifications/customer_notifications_screen.dart';
 import '../cart/cart_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../my_orders/customer_orders_screen.dart';
+import '../../../core/services/fcm_service.dart';
+import 'package:flutter/services.dart';
+import '../../../core/widgets/custom_dialog.dart';
 import 'menu_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
@@ -67,7 +70,23 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         appBarTitle = 'مرحباً، $firstName';
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirm = await CustomDialog.showConfirmDialog(
+          context: context,
+          title: 'الخروج من التطبيق 🚪',
+          message: 'هل تريد حقاً الخروج من تطبيق وصل لي؟',
+          confirmText: 'خروج',
+          cancelText: 'إلغاء',
+          confirmColor: AppColors.danger,
+        );
+        if (confirm == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       resizeToAvoidBottomInset: false,
       drawer: const CustomerDrawer(),
       appBar: AppBar(
@@ -91,13 +110,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, size: 26),
                 tooltip: 'الإشعارات',
-                onPressed: () {
-                  // Instant navigation without blocking permissions call
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CustomerNotificationsScreen(),
-                    ),
-                  );
+                onPressed: () async {
+                  final allowed = await FcmService.ensurePermissionWithDialog(context);
+                  if (allowed && context.mounted) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CustomerNotificationsScreen(),
+                      ),
+                    );
+                  }
                 },
               ),
               if (notificationProvider.unreadCount > 0)
@@ -257,8 +278,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Special navigation item for My Orders with active orders count badge
   Widget _buildOrdersNavItem(CustomerOrderProvider orderProvider) {

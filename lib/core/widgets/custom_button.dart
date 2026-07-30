@@ -63,12 +63,16 @@ class CustomButton extends StatelessWidget {
                     Icon(icon, size: 20, color: effectiveText),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    text,
-                    style: AppFonts.cairoFont(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: effectiveText,
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppFonts.cairoFont(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: effectiveText,
+                      ),
                     ),
                   ),
                 ],

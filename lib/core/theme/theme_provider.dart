@@ -4,7 +4,7 @@ import '../constants/app_constants.dart';
 
 /// Provider to manage ThemeMode dynamically and persist choices
 class ThemeProvider extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light;
 
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;

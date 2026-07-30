@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,6 +9,8 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
+import '../../../core/services/storage_service.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../home/customer_home_screen.dart';
 import 'customer_register_screen.dart';
@@ -33,7 +36,7 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
         context,
         listen: false,
       );
-      if (authProvider.currentCustomer != null) {
+      if (StorageService.isCustomerLoggedIn() || authProvider.currentCustomer != null) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const CustomerHomeScreen()),
         );
@@ -307,9 +310,39 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<CustomerAuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل الدخول للعملاء')),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirm = await CustomDialog.showConfirmDialog(
+          context: context,
+          title: 'الخروج من التطبيق 🚪',
+          message: 'هل تريد حقاً الخروج من تطبيق وصل لي؟',
+          confirmText: 'خروج',
+          cancelText: 'إلغاء',
+          confirmColor: AppColors.danger,
+        );
+        if (confirm == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+      appBar: AppBar(
+        title: const Text('تسجيل الدخول للعملاء'),
+        actions: [
+          IconButton(
+            tooltip: 'تغيير المظهر (فاتح / داكن)',
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+            onPressed: () {
+              themeProvider.toggleTheme(!themeProvider.isDarkMode);
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -429,6 +462,7 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

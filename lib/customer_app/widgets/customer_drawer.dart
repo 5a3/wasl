@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import '../../../main.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/widgets/custom_dialog.dart';
 import '../../shared/views/developer_profile_screen.dart';
 import '../providers/customer_auth_provider.dart';
 import '../views/auth/customer_login_screen.dart';
 import '../views/favorites/favorites_screen.dart';
 import '../views/my_orders/customer_orders_screen.dart';
 import '../views/profile/profile_screen.dart';
+import '../views/complaints/customer_complaint_screen.dart';
 
 /// Official Customer Navigation Drawer Component
 class CustomerDrawer extends StatelessWidget {
@@ -116,6 +119,19 @@ class CustomerDrawer extends StatelessWidget {
                     );
                   },
                 ),
+                _buildDrawerTile(
+                  context,
+                  icon: Icons.rate_review_outlined,
+                  title: 'الشكاوى والمقترحات 📩',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CustomerComplaintScreen(),
+                      ),
+                    );
+                  },
+                ),
 
                 const Divider(indent: 16, endIndent: 16),
 
@@ -182,10 +198,17 @@ class CustomerDrawer extends StatelessWidget {
               ),
             ),
             onTap: () async {
-              Navigator.of(context).pop();
-              await authProvider.logout();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
+              final confirm = await CustomDialog.showConfirmDialog(
+                context: context,
+                title: 'تسجيل الخروج 🚪',
+                message: 'هل أنت تأكد من أنك تريد تسجيل الخروج من تطبيق وصل لي؟',
+                confirmText: 'تسجيل الخروج',
+                cancelText: 'إلغاء',
+                confirmColor: AppColors.danger,
+              );
+              if (confirm == true) {
+                await authProvider.logout();
+                navigatorKey.currentState?.pushAndRemoveUntil(
                   MaterialPageRoute(
                     builder: (_) => const CustomerLoginScreen(),
                   ),

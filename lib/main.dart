@@ -32,7 +32,9 @@ import 'customer_app/providers/customer_auth_provider.dart';
 import 'customer_app/providers/customer_notification_provider.dart';
 import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
+import 'customer_app/providers/complaint_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
+import 'customer_app/views/home/customer_home_screen.dart';
 import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
 import 'shared/providers/store_provider.dart';
@@ -68,8 +70,10 @@ void main() async {
     // Enable automatic Crashlytics collection in both debug and release modes
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
-    // Initialize FCM Messaging & Local Notifications
-    await FcmService.initialize();
+    // Initialize FCM Messaging & Local Notifications in background (non-blocking for fast offline launch)
+    FcmService.initialize().catchError((e) {
+      debugPrint('FcmService async init note: $e');
+    });
   } catch (e) {
     debugPrint('Firebase Initialization Note: $e');
   }
@@ -90,6 +94,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
+        ChangeNotifierProvider(create: (_) => ComplaintProvider()),
         ChangeNotifierProxyProvider<CustomerAuthProvider, CartProvider>(
           create: (_) => CartProvider(),
           update: (_, auth, cart) {
@@ -153,7 +158,9 @@ class WaslAppMain extends StatelessWidget {
       builder: (context, child) {
         return OfflineBannerWrapper(child: child ?? const SizedBox.shrink());
       },
-      home: const AppLauncherChooserScreen(),
+      home: StorageService.isCustomerLoggedIn()
+          ? const CustomerHomeScreen()
+          : const CustomerLoginScreen(),
     );
   }
 }

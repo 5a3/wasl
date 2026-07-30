@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../main.dart';
+import '../../../customer_app/views/auth/customer_login_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/order_management_provider.dart';
@@ -13,6 +16,7 @@ import '../reports/admin_reports_screen.dart';
 import '../sub_admins/admin_sub_admins_screen.dart';
 import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
+import '../complaints/admin_complaints_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
 class DashboardTab {
@@ -314,6 +318,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           );
                         },
                       ),
+
+                    // Option 5: Customer Complaints & Suggestions
+                    _buildDrawerItem(
+                      icon: Icons.rate_review_outlined,
+                      title: 'الشكاوى والمقترحات 📩',
+                      subtitle: 'مراجعة رسائل وملاحظات العملاء والتواصل',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminComplaintsScreen()),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -323,10 +341,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 padding: const EdgeInsets.all(16),
                 child: InkWell(
                   onTap: () async {
-                    Navigator.of(context).pop();
-                    await authProvider.logout();
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
+                    final confirm = await CustomDialog.showConfirmDialog(
+                      context: context,
+                      title: 'تسجيل الخروج 🚪',
+                      message: 'هل أنت تأكد من أنك تريد تسجيل الخروج من لوحة الإدارة؟',
+                      confirmText: 'تسجيل الخروج',
+                      cancelText: 'إلغاء',
+                      confirmColor: AppColors.danger,
+                    );
+                    if (confirm == true) {
+                      await authProvider.logout();
+                      navigatorKey.currentState?.pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const CustomerLoginScreen(),
+                        ),
+                        (route) => false,
+                      );
                     }
                   },
                   borderRadius: BorderRadius.circular(16),
@@ -586,6 +616,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
@@ -595,44 +626,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Text('إغلاق المحل 🔴', style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'عند إغلاق المحل، سيتم إظهار تنبيه للعملاء وتوقف زر إتمام الطلب بالسلة فوراً.',
-              style: AppFonts.cairoFont(fontSize: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
-            ),
-            const SizedBox(height: 12),
-            Text('سبب الإغلاق (اختياري):', style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: reasonController,
-              decoration: InputDecoration(
-                hintText: 'مثال: مغلق لصلاة الجمعة / انتهاء ساعات العمل',
-                hintStyle: AppFonts.cairoFont(fontSize: 11, color: Colors.grey),
-                filled: true,
-                fillColor: isDark ? AppColors.darkBackground : Colors.grey.shade100,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'عند إغلاق المحل، سيتم إظهار تنبيه للعملاء وتوقف زر إتمام الطلب بالسلة فوراً.',
+                style: AppFonts.cairoFont(fontSize: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                'مغلق لصلاة الجمعة 🕌',
-                'انتهت ساعات العمل 🌙',
-                'مغلق للصيانة 🛠️',
-              ].map((reason) => ActionChip(
-                label: Text(reason, style: AppFonts.cairoFont(fontSize: 10)),
-                backgroundColor: isDark ? AppColors.darkBackground : Colors.grey.shade200,
-                onPressed: () {
-                  reasonController.text = reason;
-                },
-              )).toList(),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text('سبب الإغلاق (اختياري):', style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                  hintText: 'مثال: مغلق لصلاة الجمعة / انتهاء ساعات العمل',
+                  hintStyle: AppFonts.cairoFont(fontSize: 11, color: Colors.grey),
+                  filled: true,
+                  fillColor: isDark ? AppColors.darkBackground : Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  'مغلق لصلاة الجمعة 🕌',
+                  'انتهت ساعات العمل 🌙',
+                  'مغلق للصيانة 🛠️',
+                ].map((reason) => ActionChip(
+                  label: Text(reason, style: AppFonts.cairoFont(fontSize: 10)),
+                  backgroundColor: isDark ? AppColors.darkBackground : Colors.grey.shade200,
+                  onPressed: () {
+                    reasonController.text = reason;
+                  },
+                )).toList(),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(

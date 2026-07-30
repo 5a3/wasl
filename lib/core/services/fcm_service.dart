@@ -7,7 +7,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../constants/firebase_constants.dart';
+import '../widgets/custom_dialog.dart';
 
 /// Background message handler for FCM
 @pragma('vm:entry-point')
@@ -65,12 +68,17 @@ class FcmService {
       await androidPlugin.createNotificationChannel(_channel);
     }
 
-    // 4. Request permissions & subscribe to broadcast topic
-    final granted = await requestPermissions(silent: true);
+    // 4. Request permissions & subscribe to broadcast topic with fast timeout
+    final granted = await requestPermissions(silent: true).timeout(
+      const Duration(seconds: 2),
+      onTimeout: () => false,
+    );
     if (granted) {
       if (!kIsWeb) {
         try {
-          await _messaging.subscribeToTopic(topicAllCustomers);
+          await _messaging.subscribeToTopic(topicAllCustomers).timeout(
+            const Duration(seconds: 2),
+          );
           debugPrint('FCM: Subscribed to topic [$topicAllCustomers]');
         } catch (e) {
           debugPrint('FCM topic subscription note: $e');
@@ -145,6 +153,39 @@ class FcmService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Ensures notification permission is granted before navigating to Notifications.
+  /// Shows a clean explanation dialog if permission hasn't been granted yet.
+  static Future<bool> ensurePermissionWithDialog(BuildContext context) async {
+    final alreadyGranted = await hasPermission();
+    if (alreadyGranted) return true;
+
+    if (!context.mounted) return false;
+
+    final confirm = await CustomDialog.showConfirmDialog(
+      context: context,
+      title: 'تفعيل إشعارات التطبيق 🔔',
+      message:
+          'لتتمكن من متابعة حالة طلباتك لحظة بلحظة واستقبال تنبيهات التوصيل والعروض، يرجى السماح بصلاحية الإشعارات.',
+      confirmText: 'تفعيل الإشعارات 🔔',
+      cancelText: 'إلغاء',
+      confirmColor: AppColors.primary,
+    );
+
+    if (confirm == true) {
+      final granted = await requestPermissions(silent: false);
+      if (granted) {
+        return true;
+      } else if (context.mounted) {
+        CustomDialog.showErrorSnackBar(
+          context,
+          'يلزم تفعيل صلاحية الإشعارات لمتابعة التحديثات والعروض',
+        );
+      }
+    }
+
+    return false;
   }
 
   /// Display a local pop-up notification banner

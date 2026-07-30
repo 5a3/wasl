@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../../main.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -297,9 +298,17 @@ class ProfileScreen extends StatelessWidget {
                 style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               onPressed: () async {
-                await authProvider.logout();
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
+                final confirm = await CustomDialog.showConfirmDialog(
+                  context: context,
+                  title: 'تسجيل الخروج 🚪',
+                  message: 'هل أنت تأكد من أنك تريد تسجيل الخروج من تطبيق وصل لي؟',
+                  confirmText: 'تسجيل الخروج',
+                  cancelText: 'إلغاء',
+                  confirmColor: AppColors.danger,
+                );
+                if (confirm == true) {
+                  await authProvider.logout();
+                  navigatorKey.currentState?.pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const CustomerLoginScreen()),
                     (route) => false,
                   );

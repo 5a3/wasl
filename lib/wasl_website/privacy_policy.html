@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سياسة الخصوصية وشروط الاستخدام | تطبيق وصل لي (Wasl Lee Terms & Privacy)</title>
+  <meta name="description" content="سياسة الخصوصية وشروط الاستخدام الرسمية لتطبيق وصل لي (com.ahmedalattas.wasl) لمقهى جدة للوجبات السريعة والعصائر.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Navbar Navigation -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo-group">
+        <img src="assets/logo.svg" alt="Wasl Lee Logo" class="logo-img">
+        <span class="logo-title">وصل لي</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html#home" data-key="navHome">الرئيسية</a></li>
+        <li><a href="index.html#features" data-key="navFeatures">المميزات</a></li>
+        <li><a href="index.html#contacts" data-key="navContacts">التواصل والإدارة</a></li>
+        <li><a href="privacy_policy.html" style="color: var(--primary);" data-key="navPrivacy">سياسة الخصوصية</a></li>
+      </ul>
+
+      <div class="controls-group">
+        <button class="btn-control" id="langToggleBtn" onclick="toggleLanguage()">🇬🇧 English</button>
+        <button class="btn-control" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
+        <a href="index.html#download" class="btn-primary" data-key="btnDownload">تحميل التطبيق 📲</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Privacy Policy & Terms Body -->
+  <main class="privacy-body">
+    <div class="container">
+      <div class="privacy-card">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="display: inline-flex; padding: 18px; background: var(--primary-light); border-radius: 50%; color: var(--primary); font-size: 2.2rem; margin-bottom: 12px;">
+            <i class="fa-solid fa-gavel"></i>
+          </div>
+          <h1 data-key="privacyTitle" style="font-size: 2rem; font-weight: 800; color: var(--primary);">شروط الاستخدام وسياسة الخصوصية</h1>
+          <p style="font-size: 1.1rem; font-weight: 700; color: var(--text-secondary); margin-top: 4px;">تطبيق وصل لي لتوصيل المأكولات السريعة والعصائر</p>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;" data-key="privacySub">آخر تحديث: يوليو 2026 • المعرف: com.ahmedalattas.wasl</div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 24px 0;">
+
+        <h2>1. المسؤولية القانونية للهوية ورقم الهاتف:</h2>
+        <p>
+          يقر المستخدم بأن رقم الهاتف (المحمول أو الثابت) المدخل أثناء تسجيل الحساب هو رقم خاص به ويقع تحت حيازته الشخصية والقانونية.
+          يمنع منعاً باتاً التسجيل بأرقام هاتف وهمية أو عائدة لأشخاص آخرين دون تفويض رسمي.
+          في حال ثبوت عدم ملكية الرقم للمستخدم، فإن إدارة التطبيق تخلي مسؤوليتها تماماً ويتحمل المستخدم وحده كافة المسؤوليات والتبعات القانونية والقضائية الناتجة عن ذلك.
+        </p>
+
+        <h2>2. إدارة وأرشيف السندات والطلبات (مهم جداً):</h2>
+        <p>
+          تمتلك إدارة تطبيق "وصل لي" الأحقية والصلاحية الكاملة والمطلقة لإجراء عمليات الصيانة الدورية وقاعدة البيانات،
+          والتي تشمل حذف أو أرشفة السندات والطلبات والتقارير المالية والتشغيلية القديمة من النظام،
+          سواءً كان ذلك بشكل أسبوعي، شهري، أو لأي فترة زمنية تراها الإدارة مناسبة لأغراض تحسين الأداء وحجم البيانات.
+        </p>
+
+        <h2>3. جمع البيانات واستخدامها وتحديد موقع التوصيل:</h2>
+        <p>
+          يقوم التطبيق بجمع معلومات محدودة لتقديم الخدمة وتشمل: الاسم الكامل، رقم الهاتف، وعنوان التوصيل التفصيلي والمنطقة الجغرافية المخزنة بحسابه عند إتمام الطلب.
+          تُستخدم هذه البيانات فقط لضمان دقة تحضير وتوصيل الوجبات وتسهيل وصول المندوب لمكان العميل وتسليم الوجبات بأسرع وقت، والتواصل مع العميل عند الحاجة.
+          تلتزم إدارة التطبيق بعدم بيع أو مشاركة هذه البيانات مع أي جهة خارجية خارج نظام التوصيل والتشغيل المعتمد.
+        </p>
+
+        <h2>4. استخدام الإشعارات العامة (Firebase FCM):</h2>
+        <p>
+          يستخدم التطبيق خدمة الإشعارات المباشرة <strong>Firebase Cloud Messaging (FCM)</strong> لإرسال إشعارات وتنبيهات عامة وعروض ترويجية وتحديثات من إدارة مقهى جدة للوجبات السريعة للعملاء أولاً بأول.
+        </p>
+
+        <h2>5. نظام الشكاوى والمقترحات والتقييد اليومي:</h2>
+        <p>
+          يتضمن التطبيق شاشة مخصصة لإرسال الشكاوى والمقترحات مباشرة لإدارة المحل. ولمنع الغمر أو إزعاج النظام، يحتوي التطبيق على <strong>تقييد آلي يحدد الحد الأقصى بـ (2 محاولة في اليوم لكل عميل)</strong>. وتُخزن بيانات الرسائل وعنوان العميل لدى الإدارة لمتابعة وحل مشكلته بفعالية.
+        </p>
+
+        <h2>6. أمان الحسابات وكلمات المرور:</h2>
+        <p>
+          يتحمل العميل المسؤولية الكاملة عن سرية كلمة المرور الخاصة بحسابه وأي أنشطة تتم من خلال الحساب.
+          يتوجب على العميل إبلاغ إدارة التطبيق فوراً في حال الشك بوجود اختراق أو استخدام غير مصرح به لحسابه.
+        </p>
+
+        <h2>7. التعديلات على الشروط والسياسات:</h2>
+        <p>
+          تحتفظ إدارة التطبيق بالحق في تحديث شروط الاستخدام وسياسة الخصوصية هذه في أي وقت.
+          يعتبر استمرارك في استخدام التطبيق بعد إجراء التعديلات موافقة صريحة وقبولاً تاماً بالشروط المحدثة.
+        </p>
+
+        <h2>8. التواصل المباشر مع الإدارة والمسؤولين:</h2>
+        <p>لأي استفسار بشأن الشروط وسياسة الخصوصية أو طلب الدعم الفني، يمكنكم التواصل المباشر مع أصحاب القرار عبر الأرقام التالية:</p>
+        <ul style="list-style: none; padding: 0; margin-top: 10px;">
+          <li style="margin-bottom: 8px;">🍔 <strong>صاحب ومسؤول المحل (مقهى جدة للوجبات السريعة):</strong> 773062568 (اتصال / واتساب)</li>
+          <li style="margin-bottom: 8px;">🛠️ <strong>الدعم الفني ومطور التطبيق (م. أحمد العطاس):</strong> 770985114 (اتصال / واتساب)</li>
+        </ul>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-container">
+      <div class="logo-group">
+        <img src="assets/logo.svg" alt="Logo" class="logo-img" style="height: 32px;">
+        <span class="logo-title" style="font-size: 1.2rem;">وصل لي</span>
+      </div>
+      <div data-key="footerText">جميع الحقوق محفوظة © 2026 لتطبيق وصل لي (com.ahmedalattas.wasl).</div>
+      <div class="footer-links">
+        <a href="index.html" data-key="navHome">الرئيسية</a>
+        <a href="index.html#contacts" data-key="navContacts">التواصل والمساعدة</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

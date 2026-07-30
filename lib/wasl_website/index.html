@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>وصل لي - تطبيق توصيل الوجبات السريعة الأول | Wasl Lee App</title>
+  <meta name="description" content="تطبيق وصل لي (Wasl Lee) للتوصيل السريع والوجبات الطازجة من مقهى جدة للوجبات السريعة. اطلب وجبتك المفضلة وسنصلك أينما كنت بأسرع وقت!">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Navbar Navigation -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo-group">
+        <img src="assets/logo.svg" alt="Wasl Lee Logo" class="logo-img">
+        <span class="logo-title">وصل لي</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#home" data-key="navHome">الرئيسية</a></li>
+        <li><a href="#features" data-key="navFeatures">المميزات</a></li>
+        <li><a href="#contacts" data-key="navContacts">التواصل والإدارة</a></li>
+        <li><a href="privacy_policy.html" data-key="navPrivacy">سياسة الخصوصية</a></li>
+      </ul>
+
+      <div class="controls-group">
+        <button class="btn-control" id="langToggleBtn" onclick="toggleLanguage()">🇬🇧 English</button>
+        <button class="btn-control" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
+        <a href="#download" class="btn-primary" data-key="btnDownload">تحميل التطبيق 📲</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="home">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <div class="hero-badge" data-key="heroBadge">🚀 المنصة الأولى للتوصيل السريع والوجبات الطازجة</div>
+        <h1 class="hero-title" data-key="heroTitle">طلبك من مقهى جدة <span>يصلك بغمضة عين!</span></h1>
+        <p class="hero-description" data-key="heroDesc">
+          تطبيق وصل لي يضمن لك تصفح قائمة الوجبات السريعة، إكمال الطلب في ثوانٍ، وتتبع حالة وجبتك لحظة بلحظة حتى باب منزلك.
+        </p>
+        <div class="hero-ctas">
+          <a href="#download" class="btn-primary" data-key="btnDownloadNow">حمل التطبيق الآن 🍔</a>
+          <a href="#features" class="btn-secondary" data-key="btnLearnMore">اكتشف المميزات ⚡</a>
+        </div>
+      </div>
+
+      <!-- Animated Logo Showcase -->
+      <div class="mockup-wrapper">
+        <img src="assets/logo.svg" alt="Wasl Lee Logo" class="hero-logo-mockup">
+      </div>
+    </div>
+  </section>
+
+
+
+  <!-- Features Grid Section -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag" data-key="featuresTag">لماذا تطبيق وصل لي؟</div>
+        <h2 class="section-title" data-key="featuresTitle">تجربة طلب فريدة تضمن راحتك ورضاك الكامل</h2>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-burger"></i></div>
+          <h3 data-key="feat1Title">تصفح القائمة والوجبات الطازجة 🍔</h3>
+          <p data-key="feat1Desc">عرض شامل لكافة الوجبات، المشروبات، والسندويشات مع صور عالية الجودة وأسعار محدثة.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-route"></i></div>
+          <h3 data-key="feat2Title">تتبع لحظي للطلب 🛵</h3>
+          <p data-key="feat2Desc">متابعة حالة الطلب خطوة بخطوة من التحضير بالمطبخ وحتى خروج المندوب ووصوله لإليك.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-location-dot"></i></div>
+          <h3 data-key="feat3Title">حفظ موقع التسليم والعناوين 📍</h3>
+          <p data-key="feat3Desc">تخزين عنوان وموقع العميل المسجل بحسابه عند إتمام الطلب لتسهيل وصول المندوب لمكان العميل وتسليم الوجبة بسرعة.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3 data-key="feat4Title">تقييد الشكاوى وحظر اليوم 🛑</h3>
+          <p data-key="feat4Desc">نظام شكاوى ذكي يتيح لك إرسال ملاحظاتك للإدارة مع حظر إساءة الاستخدام بمحاولتين يومياً.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-bell"></i></div>
+          <h3 data-key="feat5Title">إشعارات عامة وعروض 🔔</h3>
+          <p data-key="feat5Desc">إرسال إشعارات وتنبيهات عامة وعروض ترويجية وتحديثات من إدارة المحل للعملاء أولاً بأول.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-lock"></i></div>
+          <h3 data-key="feat6Title">أمان وخصوصية تامة 🔐</h3>
+          <p data-key="feat6Desc">حماية كاملة لبياناتك الشخصية وموقعك دون مشاركتها مع أي أطراف خارجية.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+          <h3 data-key="feat7Title">إدارة السندات والجرد الدوري 📊</h3>
+          <p data-key="feat7Desc">إمكانية قيام إدارة المحل بعمل جرد دوري وحذف السندات والطلبات السابقة أسبوعياً أو شهرياً لتنظيف وتفريغ قاعدة البيانات بسهولة.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Direct Contacts & Management Section -->
+  <section class="contacts-section" id="contacts">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag" data-key="contactsTag">التواصل المباشر مع الإدارة</div>
+        <h2 class="section-title" data-key="contactsTitle">فريق الإدارة والدعم الفني في خدمتك دائماً</h2>
+      </div>
+
+      <div class="contacts-grid">
+        <!-- Contact 1: Shop Owner -->
+        <div class="contact-card">
+          <div class="contact-avatar">🍔</div>
+          <div>
+            <div style="font-size: 0.85rem; color: var(--primary); font-weight: 800;" data-key="ownerRole">صاحب ومسؤول المحل 🍔</div>
+            <h3 style="font-size: 1.15rem; font-weight: 800;" data-key="ownerName">مقهى جدة للوجبات السريعة</h3>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 2px;" data-key="ownerPhone">773062568</div>
+            <div class="contact-actions">
+              <a href="tel:773062568" class="btn-sm btn-call" data-key="btnCall">اتصال هاتف 📞</a>
+              <a href="https://wa.me/967773062568" target="_blank" class="btn-sm btn-whatsapp" data-key="btnWhatsapp">واتساب 💬</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact 2: Developer & Tech Support -->
+        <div class="contact-card">
+          <div class="contact-avatar">🛠️</div>
+          <div>
+            <div style="font-size: 0.85rem; color: var(--accent); font-weight: 800;" data-key="devRole">الدعم الفني ومطور التطبيق 🛠️</div>
+            <h3 style="font-size: 1.15rem; font-weight: 800;" data-key="devName">م. أحمد العطاس</h3>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 2px;" data-key="devPhone">770985114</div>
+            <div class="contact-actions">
+              <a href="tel:770985114" class="btn-sm btn-call" data-key="btnCall">اتصال هاتف 📞</a>
+              <a href="https://wa.me/967770985114" target="_blank" class="btn-sm btn-whatsapp" data-key="btnWhatsapp">واتساب 💬</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="features-section" id="download" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; text-align: center;">
+    <div class="container">
+      <h2 style="font-size: 2.5rem; font-weight: 900; margin-bottom: 16px;">حمل تطبيق وصل لي وابدأ الطلب الآن! 📱🍔</h2>
+      <p style="font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto 30px;">
+        متوفر الآن لأجهزة أندرويد وآيفون بأفضل أداء وأعلى سرعة توصيل في المنطقة.
+      </p>
+      <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="#" class="btn-secondary" style="background: #fff; color: #000; border: none; font-size: 1rem; padding: 12px 28px;">
+          <i class="fa-brands fa-android" style="color: #3DDC84; font-size: 1.4rem;"></i> Android APK / Play Store
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-container">
+      <div class="logo-group">
+        <img src="assets/logo.svg" alt="Logo" class="logo-img" style="height: 32px;">
+        <span class="logo-title" style="font-size: 1.2rem;">وصل لي</span>
+      </div>
+      <div data-key="footerText">جميع الحقوق محفوظة © 2026 لتطبيق وصل لي (com.ahmedalattas.wasl).</div>
+      <div class="footer-links">
+        <a href="privacy_policy.html" data-key="navPrivacy">سياسة الخصوصية</a>
+        <a href="#contacts" data-key="navContacts">التواصل والمساعدة</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

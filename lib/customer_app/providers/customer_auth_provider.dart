@@ -18,7 +18,31 @@ class CustomerAuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _currentCustomer != null || StorageService.isCustomerLoggedIn();
 
   CustomerAuthProvider() {
+    _initLocalCustomerSession();
     _loadSavedCustomerSession();
+  }
+
+  void _initLocalCustomerSession() {
+    if (StorageService.isCustomerLoggedIn()) {
+      final id = StorageService.getCustomerId();
+      final name = StorageService.getCustomerName();
+      final phone = StorageService.getCustomerPhone();
+      final address = StorageService.getCustomerAddress();
+      final username = StorageService.getCustomerUsername();
+
+      if (id != null && id.isNotEmpty) {
+        _currentCustomer = UserModel(
+          id: id,
+          fullName: name ?? 'العميل',
+          phone: phone ?? '',
+          address: address ?? '',
+          username: username ?? '',
+          email: '',
+          password: '',
+          createdAt: DateTime.now(),
+        );
+      }
+    }
   }
 
   Future<void> _loadSavedCustomerSession() async {
@@ -29,7 +53,8 @@ class CustomerAuthProvider extends ChangeNotifier {
           final doc = await _firestore
               .collection(FirebaseConstants.collectionCustomers)
               .doc(customerId)
-              .get(const GetOptions(source: Source.serverAndCache));
+              .get(const GetOptions(source: Source.serverAndCache))
+              .timeout(const Duration(seconds: 3));
           if (doc.exists && doc.data() != null) {
             _currentCustomer = UserModel.fromMap(doc.data()!, doc.id);
             notifyListeners();
