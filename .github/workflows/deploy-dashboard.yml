@@ -1,0 +1,23 @@
+name: Deploy WASL Dashboard to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+      - complaint_feature
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Deploy Wasl Dashboard to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_WASL_CDCB6 }}'
+          channelId: live
+          projectId: wasl-cdcb6
+          entrypoint: wasldashboard
