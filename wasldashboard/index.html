@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>وصل | لوحة التحكم وإدارة الحسابات</title>
+
+  <!-- FontAwesome Icons & Custom CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body>
+
+  <!-- Admin Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-icon" style="margin: 0 auto 16px; width: 56px; height: 56px; font-size: 28px;">
+        <i class="fa-solid fa-truck-fast"></i>
+      </div>
+      <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 6px;">لوحة تطبيق وصل لي</h2>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 28px;">تسجيل دخول مدير النظام</p>
+
+      <form id="login-form">
+        <div class="form-group" style="text-align: right;">
+          <label class="form-label">اسم المستخدم (Username)</label>
+          <input type="text" id="login-username" class="form-control" placeholder="ادخل اسم المستخدم (مثال: admin)"
+            required>
+        </div>
+        <div class="form-group" style="text-align: right;">
+          <label class="form-label">كلمة المرور</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; margin-top: 10px;">
+          <i class="fa-solid fa-right-to-bracket"></i> دخول للوحة التحكم
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dashboard App Shell -->
+  <div id="app-root" style="display: none;">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-truck-fast"></i>
+        </div>
+        <div>
+          <span class="brand-title">WASL</span>
+          <span class="brand-sub">إدارة الحسابات والعمليات</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-tab="tab-dashboard">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>الرئيسية والإحصائيات</span>
+        </div>
+        <div class="nav-item" data-tab="tab-users">
+          <i class="fa-solid fa-users-gear"></i>
+          <span>إدارة المستخدمين والحسابات</span>
+        </div>
+        <div class="nav-item" data-tab="tab-orders">
+          <i class="fa-solid fa-boxes-packing"></i>
+          <span>الطلبات المباشرة</span>
+        </div>
+        <div class="nav-item" data-tab="tab-complaints">
+          <i class="fa-solid fa-headset"></i>
+          <span>الشكاوى والدعم</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-profile-card">
+          <div class="admin-avatar" id="admin-avatar-char">A</div>
+          <div class="admin-info">
+            <div class="admin-name" id="admin-display-name">مدير النظام</div>
+            <div class="admin-role" id="admin-display-role">Super Admin</div>
+          </div>
+          <button class="btn-icon" id="logout-btn" title="تسجيل الخروج">
+            <i class="fa-solid fa-right-from-bracket" style="color: var(--status-danger);"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="top-navbar">
+        <div class="page-header-title">
+          <i class="fa-solid fa-shield-halved" style="color: var(--accent-primary);"></i>
+          <span id="current-tab-title">الرئيسية والإحصائيات</span>
+        </div>
+
+        <div class="top-actions">
+          <span id="live-indicator" class="badge badge-success" style="padding: 6px 12px;">
+            <i class="fa-solid fa-wifi"></i> متصل بالفايربيس حي (Live)
+          </span>
+          <button class="btn btn-secondary" id="refresh-data-btn">
+            <i class="fa-solid fa-arrows-rotate"></i> تحديث
+          </button>
+        </div>
+      </header>
+
+      <main class="content-body">
+
+        <!-- Tab 1: Dashboard Overview -->
+        <section id="tab-dashboard" class="tab-content active">
+          <!-- Main Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon indigo">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="stat-details">
+                <h4>إجمالي العملاء</h4>
+                <div class="value" id="stat-total-users">0</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon cyan">
+                <i class="fa-solid fa-cart-shopping"></i>
+              </div>
+              <div class="stat-details">
+                <h4>الطلبات النشطة</h4>
+                <div class="value" id="stat-active-orders">0</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon emerald">
+                <i class="fa-solid fa-money-bill-wave"></i>
+              </div>
+              <div class="stat-details">
+                <h4>إجمالي الإيرادات</h4>
+                <div class="value" id="stat-total-revenue">0 ر.ي</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon rose">
+                <i class="fa-solid fa-user-slash"></i>
+              </div>
+              <div class="stat-details">
+                <h4>الحسابات المحظورة</h4>
+                <div class="value" id="stat-blocked-users">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fast Account Recovery Engine Widget -->
+          <div class="card-box" style="border-right: 4px solid var(--accent-primary);">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="fa-solid fa-key" style="color: var(--status-warning);"></i>
+                <span>محرك الاسترجاع الفوري لاسم المستخدم والحسابات</span>
+              </div>
+            </div>
+            <div style="padding: 24px;">
+              <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+                ابحث برقم الهاتف أو اسم العميل للوصول الفوري لـ **اسم المستخدم (Username)** وتفاصيل الاعتماد والحظر:
+              </p>
+              <div style="display: flex; gap: 12px; max-width: 650px;">
+                <div class="search-box" style="flex: 1;">
+                  <input type="text" id="quick-search-input"
+                    placeholder="ادخل رقم الهاتف أو الاسم لـ جلب اسم المستخدم...">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <button class="btn btn-primary" id="quick-search-btn">
+                  <i class="fa-solid fa-search"></i> جلب الحساب
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Registered Users Table -->
+          <div class="card-box">
+            <div class="card-header">
+              <div class="card-title">أحدث المستخدمين الانضماماً</div>
+              <button class="btn btn-secondary" onclick="switchTab('tab-users')">عرض كافة الحسابات</button>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>الاسم الكامل</th>
+                    <th>رقم الهاتف</th>
+                    <th>اسم المستخدم (Username)</th>
+                    <th>حالة الحساب</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>استرجاع والتحكم</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-recent-users">
+                  <!-- Dynamic render -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 2: Users & Account Recovery -->
+        <section id="tab-users" class="tab-content">
+          <div class="card-box">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="fa-solid fa-id-card" style="color: var(--accent-secondary);"></i>
+                <span>إدارة الحسابات واسترجاع بيانات الدخول</span>
+              </div>
+
+              <!-- Filter Toggles & Search Box -->
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div
+                  style="display: flex; gap: 6px; background: var(--bg-glass); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                  <button class="btn btn-secondary user-filter-btn active" data-filter="ALL"
+                    style="padding: 6px 12px; font-size: 12px;">الجميع</button>
+                  <button class="btn btn-secondary user-filter-btn" data-filter="ACTIVE"
+                    style="padding: 6px 12px; font-size: 12px;">النشطين</button>
+                  <button class="btn btn-secondary user-filter-btn" data-filter="BLOCKED"
+                    style="padding: 6px 12px; font-size: 12px;">المحظورين</button>
+                </div>
+
+                <div class="search-box">
+                  <input type="text" id="users-search-input" placeholder="بحث برقم الهاتف، اسم المستخدم، أو الاسم...">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>الاسم الكامل</th>
+                    <th>رقم الهاتف</th>
+                    <th>اسم المستخدم (Username)</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>حالة الحساب</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th style="text-align: center;">إجراءات واسترجاع</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <!-- Dynamic render -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 3: Live Orders -->
+        <section id="tab-orders" class="tab-content">
+          <div class="card-box">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="fa-solid fa-boxes-packing" style="color: var(--status-warning);"></i>
+                <span>متابعة والتحكم بالطلبات المباشرة</span>
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <select id="orders-filter-status" class="form-control" style="width: auto;">
+                  <option value="ALL">جميع الطلبات</option>
+                  <option value="pending">قيد الانتظار ⏳</option>
+                  <option value="preparing">قيد التجهيز 👨‍🍳</option>
+                  <option value="delivering">جاري التوصيل 🚚</option>
+                  <option value="delivered">مكتمل / تم التوصيل ✅</option>
+                  <option value="cancelled">ملغي ❌</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>رقم الطلب</th>
+                    <th>العميل ورقم الهاتف</th>
+                    <th>المبلغ الإجمالي</th>
+                    <th>طريقة الدفع</th>
+                    <th>حالة الطلب</th>
+                    <th>تاريخ الطلب</th>
+                    <th style="text-align: center;">التفاصيل والإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                  <!-- Dynamic render -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 4: Complaints & Support -->
+        <section id="tab-complaints" class="tab-content">
+          <div class="card-box">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="fa-solid fa-headset" style="color: var(--status-danger);"></i>
+                <span>الشكاوى والبلاغات والدعم الفني</span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>اسم العميل</th>
+                    <th>رقم الهاتف</th>
+                    <th>عنوان الشكوى</th>
+                    <th>تفاصيل البلاغ</th>
+                    <th>الحالة</th>
+                    <th>التاريخ</th>
+                    <th>إجراء الدعم</th>
+                  </tr>
+                </thead>
+                <tbody id="complaints-table-body">
+                  <!-- Dynamic render -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- User Account Recovery Details Modal -->
+  <div id="user-recovery-modal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-id-card-clip" style="color: var(--accent-primary);"></i>
+          <span>تفاصيل واعتمادات حساب المستخدم</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('user-recovery-modal')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="credentials-box">
+          <div class="credential-row">
+            <span class="credential-label">اسم المستخدم (Username):</span>
+            <span class="credential-value">
+              <span id="rec-username" class="badge badge-username">--</span>
+              <button class="btn-icon" id="copy-username-btn" title="نسخ اسم المستخدم">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </span>
+          </div>
+
+          <div class="credential-row">
+            <span class="credential-label">كلمة المرور المسجلة:</span>
+            <span class="credential-value">
+              <span id="rec-password" style="font-family: monospace;">••••••••</span>
+              <button class="btn-icon" id="toggle-password-btn" title="إظهار / إخفاء كلمة المرور">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </span>
+          </div>
+
+          <div class="credential-row">
+            <span class="credential-label">رقم الهاتف:</span>
+            <span class="credential-value" id="rec-phone">--</span>
+          </div>
+
+          <div class="credential-row">
+            <span class="credential-label">البريد الإلكتروني:</span>
+            <span class="credential-value" id="rec-email">--</span>
+          </div>
+        </div>
+
+        <div
+          style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-glass); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+          <div style="font-size: 13px; color: var(--text-secondary);">
+            <strong>الاسم الكامل:</strong> <span id="rec-fullname" style="color: var(--text-primary);">--</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);">
+            <strong>العنوان المسجل:</strong> <span id="rec-address" style="color: var(--text-primary);">--</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);">
+            <strong>حالة الحساب حالياً:</strong> <span id="rec-status">--</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);">
+            <strong>تاريخ التسجيل:</strong> <span id="rec-date" style="color: var(--text-primary);">--</span>
+          </div>
+        </div>
+
+        <!-- Direct Actions Inside Recovery Modal -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="rec-toggle-block-btn" style="flex: 1;">
+            <i class="fa-solid fa-lock"></i> تغيير حالة الحظر
+          </button>
+          <button class="btn btn-secondary" id="rec-view-orders-btn" style="flex: 1;">
+            <i class="fa-solid fa-boxes-packing"></i> عرض طلبات العميل
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('user-recovery-modal')">إغلاق</button>
+        <button class="btn btn-primary" id="edit-user-from-rec-btn">
+          <i class="fa-solid fa-pen-to-square"></i> تعديل الحساب
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="edit-user-modal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">تعديل بيانات الحساب واسم المستخدم</div>
+        <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+      </div>
+      <form id="edit-user-form">
+        <div class="modal-body">
+          <input type="hidden" id="edit-user-id">
+          <div class="form-group">
+            <label class="form-label">الاسم الكامل</label>
+            <input type="text" id="edit-fullname" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">اسم المستخدم (Username)</label>
+            <input type="text" id="edit-username" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف</label>
+            <input type="text" id="edit-phone" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">البريد الإلكتروني</label>
+            <input type="email" id="edit-email" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">كلمة المرور الجديدة</label>
+            <input type="text" id="edit-password" class="form-control"
+              placeholder="ادخل كلمة مرور جديدة أو اتركه فارغاً">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-user-modal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Customer Orders History Modal -->
+  <div id="user-orders-modal" class="modal-overlay">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-boxes-packing" style="color: var(--accent-secondary);"></i>
+          <span>سجل طلبات العميل: <span id="uorder-cust-name"></span></span>
+        </div>
+        <button class="modal-close" onclick="closeModal('user-orders-modal')">&times;</button>
+      </div>
+      <div class="modal-body" id="user-orders-modal-body">
+        <!-- Dynamic content -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('user-orders-modal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Details & Print Receipt Modal -->
+  <div id="order-modal" class="modal-overlay">
+    <div class="modal-container" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title">تفاصيل الطلب <span id="ord-id-display"></span></div>
+        <button class="modal-close" onclick="closeModal('order-modal')">&times;</button>
+      </div>
+      <div class="modal-body" id="order-modal-body">
+        <!-- Dynamic order details -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('order-modal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Alerts Container -->
+  <div id="toast-container"></div>
+
+  <!-- Main JavaScript Modules -->
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
