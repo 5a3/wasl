@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
       - complaint_feature
 
 jobs:
@@ -17,7 +18,6 @@ jobs:
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only hosting
-          working_directory: wasldashboard
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           PROJECT_ID: wasl-cdcb6
