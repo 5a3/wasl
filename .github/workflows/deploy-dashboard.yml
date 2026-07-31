@@ -14,10 +14,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Deploy Wasl Dashboard to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
+        uses: w9jds/firebase-action@master
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_WASL_CDCB6 }}'
-          channelId: live
-          projectId: wasl-cdcb6
-          entrypoint: wasldashboard
+          args: deploy --only hosting
+          working_directory: wasldashboard
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          PROJECT_ID: wasl-cdcb6
