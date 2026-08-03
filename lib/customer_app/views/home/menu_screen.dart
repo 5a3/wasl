@@ -2,10 +2,12 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/product_provider.dart';
 import '../../../admin_app/providers/ad_provider.dart';
 import '../../../shared/models/ad_model.dart';
+import '../../../shared/models/product_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
@@ -27,15 +29,38 @@ class _MenuScreenState extends State<MenuScreen> {
   String? _selectedCategoryId;
   String _searchQuery = '';
   int _currentAdPage = 0;
+  bool _isGridView = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _loadViewPreference();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
     });
+  }
+
+  Future<void> _loadViewPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _isGridView = prefs.getBool('menu_is_grid_view') ?? false;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleViewMode(bool isGrid) async {
+    setState(() {
+      _isGridView = isGrid;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('menu_is_grid_view', isGrid);
+    } catch (_) {}
   }
 
   @override
@@ -78,7 +103,7 @@ class _MenuScreenState extends State<MenuScreen> {
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyMenuHeaderDelegate(
-            height: 196.0,
+            height: 215.0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -105,6 +130,30 @@ class _MenuScreenState extends State<MenuScreen> {
                   _searchQuery.isNotEmpty ? 'لا توجد نتائج تطابق البحث' : 'لا توجد أصناف متوفرة في هذه الفئة',
                   style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
                 ),
+              ),
+            ),
+          )
+        else if (_isGridView)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.65,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (ctx, index) {
+                  final product = filteredProducts[index];
+                  final isFav = favProvider.isFavorite(product.id);
+                  final isInCart = cartProvider.items.containsKey(product.id);
+                  final qty = isInCart ? cartProvider.items[product.id]!.quantity : 0;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+                  return _buildGridProductCard(product, isFav, isInCart, qty, isDark, favProvider, cartProvider);
+                },
+                childCount: filteredProducts.length,
               ),
             ),
           )
@@ -307,6 +356,228 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Grid Product Card Item (2 Columns View)
+  Widget _buildGridProductCard(
+    ProductModel product,
+    bool isFav,
+    bool isInCart,
+    int qty,
+    bool isDark,
+    FavoriteProvider favProvider,
+    CartProvider cartProvider,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ProductDetailsScreen(product: product)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 20 : 8),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Stack with Favorite button overlay
+            Stack(
+              children: [
+                Hero(
+                  tag: 'product_image_${product.id}',
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+                    child: CustomCachedImage(
+                      imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                      width: double.infinity,
+                      height: 125,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.fastfood, size: 36, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                // Favorite Button Overlay
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.black : Colors.white).withAlpha(190),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(20),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        isFav ? Icons.favorite : Icons.favorite_border,
+                        color: isFav ? AppColors.danger : Colors.grey.shade500,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        favProvider.toggleFavorite(product.id);
+                      },
+                    ),
+                  ),
+                ),
+                // Unavailable Overlay
+                if (!product.isAvailable)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(17)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'غير متوفر',
+                          style: AppFonts.cairoFont(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            // Product Details (Title, Description, Price & Actions)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: AppFonts.cairoFont(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          product.description,
+                          style: AppFonts.cairoFont(
+                            fontSize: 10,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+
+                    // Price & Cart Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            Formatters.formatCurrency(product.price),
+                            style: AppFonts.cairoFont(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (product.isAvailable)
+                          Builder(
+                            builder: (ctx) {
+                              if (isInCart) {
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withAlpha(15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.primary.withAlpha(60)),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => cartProvider.decrementItem(product.id),
+                                        child: const Icon(Icons.remove, color: AppColors.danger, size: 16),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                                        child: Text(
+                                          '$qty',
+                                          style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: () => cartProvider.addToCart(product),
+                                        child: const Icon(Icons.add, color: AppColors.primary, size: 16),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                return InkWell(
+                                  onTap: () {
+                                    cartProvider.addToCart(product);
+                                    CustomDialog.showSuccessSnackBar(context, 'تم إضافة ${product.name} إلى السلة');
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add_shopping_cart,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -716,6 +987,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ),
               const SizedBox(width: 8),
+              // Products Count Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
@@ -727,14 +999,81 @@ class _MenuScreenState extends State<MenuScreen> {
                   style: AppFonts.cairoFont(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
                 ),
               ),
+
+              const SizedBox(width: 8),
+
+              // View Mode Selector (List vs Grid Toggle Switch)
+              Builder(
+                builder: (ctx) {
+                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                  return Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurfaceLight : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : Colors.grey.shade300,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // List View Button
+                        InkWell(
+                          onTap: () => _toggleViewMode(false),
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: !_isGridView ? AppColors.primary : Colors.transparent,
+                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                            ),
+                            child: Icon(
+                              Icons.view_list_rounded,
+                              size: 18,
+                              color: !_isGridView ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                            ),
+                          ),
+                        ),
+                        // Grid View Button
+                        InkWell(
+                          onTap: () => _toggleViewMode(true),
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _isGridView ? AppColors.primary : Colors.transparent,
+                              borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                            ),
+                            child: Icon(
+                              Icons.grid_view_rounded,
+                              size: 18,
+                              color: _isGridView ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Divider(height: 1, thickness: 1),
+        Builder(
+          builder: (ctx) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Divider(
+                height: 1,
+                thickness: 1.2,
+                color: isDark ? AppColors.darkBorder : Colors.grey.shade300,
+              ),
+            );
+          },
         ),
-        const SizedBox(height: 4),
       ],
     );
   }
@@ -747,7 +1086,7 @@ class _StickyMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   _StickyMenuHeaderDelegate({
     required this.child,
-    this.height = 196.0,
+    this.height = 215.0,
   });
 
   @override
