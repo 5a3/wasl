@@ -385,6 +385,7 @@ class _EditAddressBottomSheetState extends State<_EditAddressBottomSheet> {
       ),
       child: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,6 +512,7 @@ class _EditPasswordBottomSheetState extends State<_EditPasswordBottomSheet> {
       ),
       child: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
