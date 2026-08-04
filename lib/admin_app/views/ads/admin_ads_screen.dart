@@ -14,6 +14,9 @@ import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/ad_model.dart';
 import '../../providers/ad_provider.dart';
 
+import '../../../core/constants/admin_permissions.dart';
+import '../../providers/admin_auth_provider.dart';
+
 class AdminAdsScreen extends StatefulWidget {
   const AdminAdsScreen({super.key});
 
@@ -25,6 +28,7 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
   @override
   Widget build(BuildContext context) {
     final adProvider = Provider.of<AdProvider>(context);
+    final admin = Provider.of<AdminAuthProvider>(context).currentAdmin;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,16 +38,18 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
         ),
         elevation: 1,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_admin_ads',
-        backgroundColor: AppColors.primary,
-        onPressed: () => _openAddEditAdDialog(null),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة إعلان جديد',
-          style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: (admin != null && admin.hasPermission(AdminPermissions.adsAdd))
+          ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_ads',
+              backgroundColor: AppColors.primary,
+              onPressed: () => _openAddEditAdDialog(null),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'إضافة إعلان جديد',
+                style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: adProvider.isLoading && adProvider.ads.isEmpty
           ? const ShimmerLoadingList(itemCount: 6, height: 80)
           : adProvider.ads.isEmpty
@@ -121,6 +127,10 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
                                       value: ad.isActive,
                                       activeColor: AppColors.primary,
                                       onChanged: (val) {
+                                        if (admin != null && !admin.hasPermission(AdminPermissions.adsEdit)) {
+                                          CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الإعلانات 🔒');
+                                          return;
+                                        }
                                         adProvider.toggleAdStatus(ad.id, val);
                                       },
                                     ),
@@ -128,16 +138,18 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
                                 ),
                                 Row(
                                   children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_outlined, color: AppColors.info, size: 20),
-                                      onPressed: () => _openAddEditAdDialog(ad),
-                                      tooltip: 'تعديل',
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                                      onPressed: () => _confirmDeleteAd(ad),
-                                      tooltip: 'حذف',
-                                    ),
+                                    if (admin != null && admin.hasPermission(AdminPermissions.adsEdit))
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, color: AppColors.info, size: 20),
+                                        onPressed: () => _openAddEditAdDialog(ad),
+                                        tooltip: 'تعديل',
+                                      ),
+                                    if (admin != null && admin.hasPermission(AdminPermissions.adsDelete))
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                                        onPressed: () => _confirmDeleteAd(ad),
+                                        tooltip: 'حذف',
+                                      ),
                                   ],
                                 ),
                               ],
@@ -153,6 +165,21 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
   /// Dialog to add or edit an Ad
   void _openAddEditAdDialog(AdModel? adToEdit) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    final isEditing = adToEdit != null;
+
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.adsEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الإعلانات 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.adsAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية نشر إعلانات جديدة 🔒');
+        return;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -163,6 +190,12 @@ class _AdminAdsScreenState extends State<AdminAdsScreen> {
 
   /// Confirm Delete Dialog
   void _confirmDeleteAd(AdModel ad) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.adsDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف الإعلانات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف الإعلان 📢',

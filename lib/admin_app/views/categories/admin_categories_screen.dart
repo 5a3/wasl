@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/category_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
 import 'add_edit_category_screen.dart';
 
@@ -34,18 +36,36 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 
   void _openAddCategory() {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.categoriesAdd)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة فئات جديدة 🔒');
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AddEditCategoryScreen()),
     );
   }
 
   void _openEditCategory(CategoryModel category) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.categoriesEdit)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الفئات 🔒');
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => AddEditCategoryScreen(categoryToEdit: category)),
     );
   }
 
   void _confirmDelete(CategoryModel category) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.categoriesDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف الفئات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف الفئة',
@@ -63,17 +83,21 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final admin = Provider.of<AdminAuthProvider>(context).currentAdmin;
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_admin_categories',
-        backgroundColor: AppColors.primary,
-        onPressed: _openAddCategory,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة فئة جديدة',
-          style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: (admin != null && admin.hasPermission(AdminPermissions.categoriesAdd))
+          ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_categories',
+              backgroundColor: AppColors.primary,
+              onPressed: _openAddCategory,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'إضافة فئة جديدة',
+                style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: Consumer<CategoryProvider>(
         builder: (context, catProvider, _) {
           return Column(
@@ -145,14 +169,16 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_outlined, color: AppColors.info),
-                                        onPressed: () => _openEditCategory(cat),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                        onPressed: () => _confirmDelete(cat),
-                                      ),
+                                      if (admin != null && admin.hasPermission(AdminPermissions.categoriesEdit))
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, color: AppColors.info),
+                                          onPressed: () => _openEditCategory(cat),
+                                        ),
+                                      if (admin != null && admin.hasPermission(AdminPermissions.categoriesDelete))
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                          onPressed: () => _confirmDelete(cat),
+                                        ),
                                     ],
                                   ),
                                 ),

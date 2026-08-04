@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
@@ -7,6 +8,7 @@ import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../shared/models/delivery_zone_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/delivery_zone_provider.dart';
 
 class AdminDeliveryZonesScreen extends StatefulWidget {
@@ -34,7 +36,21 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
   }
 
   void _showAddOrEditZoneDialog([DeliveryZoneModel? zoneToEdit]) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
     final isEditing = zoneToEdit != null;
+
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.deliveryZonesEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل مناطق التوصيل 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.deliveryZonesAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة مناطق توصيل جديدة 🔒');
+        return;
+      }
+    }
+
     final zoneNameController = TextEditingController(text: zoneToEdit?.zoneName ?? '');
     final feeController = TextEditingController(text: zoneToEdit?.deliveryFee.toString() ?? '');
 
@@ -112,6 +128,12 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
   }
 
   void _confirmDelete(DeliveryZoneModel zone) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.deliveryZonesDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف مناطق التوصيل 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف منطقة التوصيل',
@@ -129,17 +151,21 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final admin = Provider.of<AdminAuthProvider>(context).currentAdmin;
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_admin_delivery_zones',
-        backgroundColor: AppColors.primary,
-        onPressed: () => _showAddOrEditZoneDialog(),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة منطقة توصيل',
-          style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: (admin != null && admin.hasPermission(AdminPermissions.deliveryZonesAdd))
+          ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_delivery_zones',
+              backgroundColor: AppColors.primary,
+              onPressed: () => _showAddOrEditZoneDialog(),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'إضافة منطقة توصيل',
+                style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: Consumer<DeliveryZoneProvider>(
         builder: (context, zoneProvider, _) {
           return Column(
@@ -200,14 +226,16 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_outlined, color: AppColors.info),
-                                        onPressed: () => _showAddOrEditZoneDialog(zone),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                        onPressed: () => _confirmDelete(zone),
-                                      ),
+                                      if (admin != null && admin.hasPermission(AdminPermissions.deliveryZonesEdit))
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, color: AppColors.info),
+                                          onPressed: () => _showAddOrEditZoneDialog(zone),
+                                        ),
+                                      if (admin != null && admin.hasPermission(AdminPermissions.deliveryZonesDelete))
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                          onPressed: () => _confirmDelete(zone),
+                                        ),
                                     ],
                                   ),
                                 ),

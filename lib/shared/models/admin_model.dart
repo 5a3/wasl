@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/constants/admin_permissions.dart';
 
-/// Admin User Model with Role-based Access Control
+/// Admin User Model with Role-based Access Control & Granular Permissions
 class AdminModel {
   final String id;
   final String username;
@@ -10,6 +11,8 @@ class AdminModel {
   final List<String> permissions;
   final DateTime createdAt;
 
+  late final List<String> effectivePermissions;
+
   AdminModel({
     required this.id,
     required this.username,
@@ -18,9 +21,23 @@ class AdminModel {
     required this.role,
     required this.permissions,
     required this.createdAt,
-  });
+  }) {
+    effectivePermissions = AdminPermissions.normalizePermissions(permissions);
+  }
 
   bool get isSuperAdmin => role == 'super_admin';
+
+  /// Check if admin has a specific granular permission
+  bool hasPermission(String permKey) {
+    if (isSuperAdmin) return true;
+    return effectivePermissions.contains(permKey);
+  }
+
+  /// Check if admin has AT LEAST ONE of the given permissions
+  bool hasAnyPermission(List<String> permKeys) {
+    if (isSuperAdmin) return true;
+    return permKeys.any((key) => effectivePermissions.contains(key));
+  }
 
   Map<String, dynamic> toMap() {
     return {

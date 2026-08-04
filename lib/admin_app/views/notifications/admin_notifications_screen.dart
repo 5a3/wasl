@@ -5,6 +5,7 @@ import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_textfield.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../shared/models/notification_model.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/notification_provider.dart';
@@ -40,6 +41,17 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   Future<void> _sendNotification() async {
     final provider = Provider.of<AdminNotificationProvider>(context, listen: false);
     final authProvider = Provider.of<AdminAuthProvider>(context, listen: false);
+    final admin = authProvider.currentAdmin;
+
+    if (admin != null && !admin.hasPermission(AdminPermissions.notificationsSendAll)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('عذراً، حسابك لا يمتلك صلاحية إرسال إشعارات جماعية للعملاء 🔒', style: AppFonts.cairoFont(color: Colors.white)),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
     final adminName = authProvider.currentAdmin?.fullName ?? 'إدارة التطبيق';
 
     final success = await provider.sendNotification(
@@ -81,6 +93,14 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   }
 
   Future<void> _confirmDeleteAll() async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.notificationsDelete)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('عذراً، حسابك لا يمتلك صلاحية حذف الإشعارات 🔒', style: AppFonts.cairoFont(color: Colors.white)), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+
     final provider = Provider.of<AdminNotificationProvider>(context, listen: false);
     if (provider.notifications.isEmpty) return;
 
@@ -123,6 +143,15 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
 
   Future<void> _confirmDeleteSelected() async {
     if (_selectedIds.isEmpty) return;
+
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.notificationsDelete)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('عذراً، حسابك لا يمتلك صلاحية حذف الإشعارات 🔒', style: AppFonts.cairoFont(color: Colors.white)), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+
     final provider = Provider.of<AdminNotificationProvider>(context, listen: false);
 
     final confirm = await showDialog<bool>(

@@ -19,15 +19,17 @@ import '../ads/admin_ads_screen.dart';
 import '../complaints/admin_complaints_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
+import '../../../core/constants/admin_permissions.dart';
+
 class DashboardTab {
   final Widget screen;
   final BottomNavigationBarItem item;
-  final String? requiredPermission;
+  final List<String> requiredPermissions;
 
   const DashboardTab({
     required this.screen,
     required this.item,
-    this.requiredPermission,
+    required this.requiredPermissions,
   });
 }
 
@@ -49,11 +51,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final admin = authProvider.currentAdmin;
     final activeOrdersCount = orderProvider.activeOrders.length;
 
-    // Bottom Navigation tabs (simplified to 4 tabs as requested)
+    // Bottom Navigation tabs with micro-permissions
     final List<DashboardTab> allTabs = [
       DashboardTab(
         screen: const AdminOrdersScreen(),
-        requiredPermission: 'manage_orders',
+        requiredPermissions: const [
+          AdminPermissions.ordersView,
+          AdminPermissions.ordersAcceptPrepare,
+          AdminPermissions.ordersSendDelivery,
+          AdminPermissions.ordersMarkCompleted,
+        ],
         item: BottomNavigationBarItem(
           icon: Stack(
             clipBehavior: Clip.none,
@@ -83,7 +90,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       const DashboardTab(
         screen: AdminCategoriesScreen(),
-        requiredPermission: 'manage_products',
+        requiredPermissions: [
+          AdminPermissions.categoriesView,
+          AdminPermissions.categoriesManage,
+          AdminPermissions.categoriesAdd,
+          AdminPermissions.categoriesEdit,
+        ],
         item: BottomNavigationBarItem(
           icon: Icon(Icons.category_outlined),
           activeIcon: Icon(Icons.category, color: AppColors.primary),
@@ -92,7 +104,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       const DashboardTab(
         screen: AdminProductsScreen(),
-        requiredPermission: 'manage_products',
+        requiredPermissions: [
+          AdminPermissions.productsView,
+          AdminPermissions.productsAdd,
+          AdminPermissions.productsEdit,
+          AdminPermissions.productsToggleAvailability,
+        ],
         item: BottomNavigationBarItem(
           icon: Icon(Icons.fastfood_outlined),
           activeIcon: Icon(Icons.fastfood, color: AppColors.primary),
@@ -101,7 +118,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       const DashboardTab(
         screen: AdminDeliveryZonesScreen(),
-        requiredPermission: 'manage_orders',
+        requiredPermissions: [
+          AdminPermissions.deliveryZonesView,
+          AdminPermissions.deliveryZonesAdd,
+          AdminPermissions.deliveryZonesEdit,
+          AdminPermissions.deliveryZonesToggle,
+        ],
         item: BottomNavigationBarItem(
           icon: Icon(Icons.local_shipping_outlined),
           activeIcon: Icon(Icons.local_shipping, color: AppColors.primary),
@@ -110,12 +132,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     ];
 
-    // Filter tabs based on admin role and permissions
+    // Filter tabs based on admin role and micro permissions
     final List<DashboardTab> allowedTabs = allTabs.where((tab) {
       if (admin == null) return false;
       if (admin.isSuperAdmin) return true;
-      if (tab.requiredPermission == null) return true;
-      return admin.permissions.contains(tab.requiredPermission);
+      if (tab.requiredPermissions.isEmpty) return true;
+      return admin.hasAnyPermission(tab.requiredPermissions);
     }).toList();
 
     // Prevent index out of bounds if permissions dynamically change
@@ -260,7 +282,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 8),
 
                     // Option 1: Reports & Analytics
-                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('view_reports')))
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.reportsViewSummary, AdminPermissions.reportsViewFinancial, AdminPermissions.reportsExportPdf]))
                       _buildDrawerItem(
                         icon: Icons.bar_chart_outlined,
                         title: 'التقارير والإحصائيات 📊',
@@ -275,7 +297,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
 
                     // Option 2: Manage Sub-Admins
-                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_admins')))
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.subAdminsView, AdminPermissions.subAdminsAdd, AdminPermissions.subAdminsEditPermissions]))
                       _buildDrawerItem(
                         icon: Icons.people_alt_outlined,
                         title: 'إدارة المدراء والصلاحيات 👥',
@@ -289,8 +311,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         },
                       ),
 
-                    // Option 3: Manage Ads & Notifications
-                    if (admin != null && (admin.isSuperAdmin || admin.permissions.contains('manage_products')))
+                    // Option 3: Manage Ads & Banners
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.adsView, AdminPermissions.adsAdd, AdminPermissions.adsEdit]))
                       _buildDrawerItem(
                         icon: Icons.campaign_outlined,
                         title: 'إدارة الإعلانات والتنبيهات 📢',
@@ -305,7 +327,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
 
                     // Option 4: Broadcast App Notifications
-                    if (admin != null && admin.isSuperAdmin)
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.notificationsView, AdminPermissions.notificationsSendAll]))
                       _buildDrawerItem(
                         icon: Icons.notifications_active_outlined,
                         title: 'إشعارات التطبيق 🔔',
@@ -320,18 +342,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
 
                     // Option 5: Customer Complaints & Suggestions
-                    _buildDrawerItem(
-                      icon: Icons.rate_review_outlined,
-                      title: 'الشكاوى والمقترحات 📩',
-                      subtitle: 'مراجعة رسائل وملاحظات العملاء والتواصل',
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminComplaintsScreen()),
-                        );
-                      },
-                    ),
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.complaintsView, AdminPermissions.complaintsReply]))
+                      _buildDrawerItem(
+                        icon: Icons.rate_review_outlined,
+                        title: 'الشكاوى والمقترحات 📩',
+                        subtitle: 'مراجعة رسائل وملاحظات العملاء والتواصل',
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminComplaintsScreen()),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -420,7 +443,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: allowedTabs.map((t) => t.screen).toList(),
               ),
             ),
-      bottomNavigationBar: allowedTabs.isEmpty
+      bottomNavigationBar: allowedTabs.length < 2
           ? null
           : Container(
               decoration: BoxDecoration(
@@ -596,6 +619,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _toggleStoreStatusDialog(BuildContext context, StoreProvider storeProvider, bool newStatus) {
+    final authProvider = Provider.of<AdminAuthProvider>(context, listen: false);
+    final admin = authProvider.currentAdmin;
+
+    if (admin != null && !admin.hasPermission(AdminPermissions.storeStatusToggle)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية التحكم بـ (فتح/إغلاق) المحل 🔒');
+      return;
+    }
+
     if (newStatus) {
       // Re-opening store
       storeProvider.updateStoreStatus(true);

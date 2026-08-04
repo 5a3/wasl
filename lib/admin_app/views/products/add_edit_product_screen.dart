@@ -11,6 +11,8 @@ import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../core/constants/admin_permissions.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
 
@@ -94,6 +96,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   void _saveProduct() async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.productsEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الوجبات 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.productsAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة وجبات جديدة 🔒');
+        return;
+      }
+    }
+
     if (!_formKey.currentState!.validate()) return;
     if (_selectedMainCat == null) {
       CustomDialog.showErrorSnackBar(context, 'يرجى اختيار الفئة الرئيسية للمنتج');

@@ -9,7 +9,9 @@ import '../../../core/services/firebase_storage_service.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../shared/models/category_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
 
 class AddEditCategoryScreen extends StatefulWidget {
@@ -63,6 +65,19 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   }
 
   void _saveCategory() async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.categoriesEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الفئات 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.categoriesAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة فئات جديدة 🔒');
+        return;
+      }
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     // A category image is strictly required when creating a new category

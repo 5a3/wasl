@@ -8,6 +8,8 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../shared/models/order_model.dart';
+import '../../../core/constants/admin_permissions.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/order_management_provider.dart';
 import 'order_receipt_dialog.dart';
 
@@ -49,6 +51,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   void _showReceipt(OrderModel order) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.ordersPrintReceipt)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية طباعة الفواتير والإيصالات 🔒');
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (_) => OrderReceiptDialog(order: order),
@@ -56,6 +64,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   void _deleteOrderConfirm(OrderModel order, OrderManagementProvider provider) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.ordersDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف الطلبات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف الطلب نهائياً',
@@ -1040,6 +1054,26 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   void _changeStatus(String orderId, String newStatus, OrderManagementProvider provider) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null) {
+      if (newStatus == AppConstants.statusAcceptedPreparing && !admin.hasPermission(AdminPermissions.ordersAcceptPrepare)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تحويل الطلب للتجهيز والتحضير 🍳🔒');
+        return;
+      }
+      if (newStatus == AppConstants.statusDelivering && !admin.hasPermission(AdminPermissions.ordersSendDelivery)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تحويل الطلب للتوصيل مع المندوب 🛵🔒');
+        return;
+      }
+      if (newStatus == AppConstants.statusDelivered && !admin.hasPermission(AdminPermissions.ordersMarkCompleted)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إكمال وتسليم الطلب ✅🔒');
+        return;
+      }
+      if (newStatus == AppConstants.statusCanceled && !admin.hasPermission(AdminPermissions.ordersCancel)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إلغاء ورفض الطلبات ❌🔒');
+        return;
+      }
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'تعديل حالة الطلب',

@@ -186,6 +186,14 @@ class AdminAuthProvider extends ChangeNotifier {
       final index = _subAdmins.indexWhere((a) => a.id == id);
       if (index != -1) {
         final old = _subAdmins[index];
+
+        // Safety lock: Only Super Admin can edit Super Admin credentials
+        if (old.isSuperAdmin && _currentAdmin?.isSuperAdmin != true) {
+          _errorMessage = 'عذراً، لا يمكن تعديل بيانات أو صلاحيات المدير العام الرئيسي إلا بواسطة المدير العام نفسه 🔒';
+          notifyListeners();
+          return false;
+        }
+
         final updated = AdminModel(
           id: id,
           username: username.trim(),
@@ -202,6 +210,9 @@ class AdminAuthProvider extends ChangeNotifier {
             .update(updated.toMap());
 
         _subAdmins[index] = updated;
+        if (_currentAdmin?.id == id) {
+          _currentAdmin = updated;
+        }
         notifyListeners();
         return true;
       }
@@ -216,6 +227,13 @@ class AdminAuthProvider extends ChangeNotifier {
   /// Delete Sub-Admin
   Future<bool> deleteSubAdmin(String id) async {
     try {
+      final index = _subAdmins.indexWhere((a) => a.id == id);
+      if (index != -1 && _subAdmins[index].isSuperAdmin) {
+        _errorMessage = 'عذراً، لا يمكن حذف حساب المدير العام الرئيسي 🔒';
+        notifyListeners();
+        return false;
+      }
+
       await _firestore
           .collection(FirebaseConstants.collectionAdmins)
           .doc(id)

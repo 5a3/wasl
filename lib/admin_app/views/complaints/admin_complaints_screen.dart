@@ -8,6 +8,9 @@ import '../../../core/widgets/custom_dialog.dart';
 import '../../../customer_app/providers/complaint_provider.dart';
 import '../../../shared/models/complaint_model.dart';
 
+import '../../../core/constants/admin_permissions.dart';
+import '../../providers/admin_auth_provider.dart';
+
 /// Admin Screen for viewing, managing, calling customers, and deleting complaints & suggestions
 class AdminComplaintsScreen extends StatefulWidget {
   const AdminComplaintsScreen({super.key});
@@ -20,6 +23,12 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   String _selectedFilter = 'الكل'; // 'الكل', 'شكوى', 'مقترح', 'استفسار'
 
   void _callPhone(String phone) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.complaintsReply)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية التواصل والرد على الشكاوى 🔒');
+      return;
+    }
+
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     final uri = Uri.parse('tel:$cleanPhone');
     try {
@@ -38,6 +47,12 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   }
 
   void _openWhatsApp(String phone) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.complaintsReply)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية التواصل والرد على الشكاوى 🔒');
+      return;
+    }
+
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final fullPhone = cleanPhone.startsWith('967') ? cleanPhone : '967$cleanPhone';
     final uri = Uri.parse('whatsapp://send?phone=$fullPhone');
@@ -62,6 +77,12 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   }
 
   void _confirmDelete(ComplaintModel complaint, ComplaintProvider provider) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.complaintsDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف الشكاوى والمقترحات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف الرسالة نهائياً',

@@ -15,6 +15,8 @@ import '../../providers/analytics_provider.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/category_provider.dart';
+import '../../../core/constants/admin_permissions.dart';
+import '../../../core/widgets/custom_dialog.dart';
 import '../../../shared/models/order_model.dart';
 import '../../../shared/models/product_model.dart';
 
@@ -154,13 +156,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     List<_ProductSalesStats> topProductsList,
     List<_CustomerStats> topCustomersList,
   ) async {
+    final admin = authProvider.currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.reportsExportPdf)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تصدير وطباعة تقارير PDF 🔒');
+      return;
+    }
+
     final pdf = pw.Document();
 
     final amiriRegular = await PdfHelper.cairoRegular;
     final amiriBold = await PdfHelper.cairoBold;
     final logoSvg = await rootBundle.loadString('assets/images/logoreport.svg');
 
-    final admin = authProvider.currentAdmin;
     final managerName = admin?.fullName ?? 'مدير النظام';
     final managerUsername = admin?.username ?? 'admin';
 

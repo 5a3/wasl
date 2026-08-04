@@ -8,6 +8,8 @@ import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../core/constants/admin_permissions.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
 import 'add_edit_product_screen.dart';
@@ -39,6 +41,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   void _openAddProduct([String? categoryId]) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.productsAdd)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة منتجات جديدة 🔒');
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AddEditProductScreen(
@@ -49,6 +57,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   void _openEditProduct(ProductModel product) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.productsEdit)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل الوجبات 🔒');
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AddEditProductScreen(productToEdit: product),
@@ -57,6 +71,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   void _confirmDelete(ProductModel product) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.productsDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف الوجبات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف المنتج',
@@ -75,20 +95,24 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final admin = Provider.of<AdminAuthProvider>(context).currentAdmin;
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_admin_products',
-        backgroundColor: AppColors.primary,
-        onPressed: () => _openAddProduct(),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة منتج جديد',
-          style: AppFonts.cairoFont(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      floatingActionButton: (admin != null && admin.hasPermission(AdminPermissions.productsAdd))
+          ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_products',
+              backgroundColor: AppColors.primary,
+              onPressed: () => _openAddProduct(),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'إضافة منتج جديد',
+                style: AppFonts.cairoFont(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          : null,
       body: Consumer2<ProductProvider, CategoryProvider>(
         builder: (context, prodProvider, catProvider, _) {
           // Zero Extra Firebase Reads: local in-memory filtering
@@ -308,6 +332,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                                 value: product.isAvailable,
                                                 activeColor: AppColors.primary,
                                                 onChanged: (val) {
+                                                  if (admin != null && !admin.hasPermission(AdminPermissions.productsToggleAvailability)) {
+                                                    CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تغيير توفر الوجبات 🔒');
+                                                    return;
+                                                  }
                                                   prodProvider.toggleAvailability(product.id, val);
                                                 },
                                               ),
@@ -315,37 +343,42 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                           ),
                                         ],
                                       ),
-                                      const Divider(height: 16),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          TextButton.icon(
-                                            icon: const Icon(
-                                              Icons.edit_outlined,
-                                              color: AppColors.info,
-                                              size: 18,
-                                            ),
-                                            label: Text(
-                                              'تعديل المنتج',
-                                              style: AppFonts.cairoFont(color: AppColors.info),
-                                            ),
-                                            onPressed: () => _openEditProduct(product),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          TextButton.icon(
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: AppColors.danger,
-                                              size: 18,
-                                            ),
-                                            label: Text(
-                                              'حذف',
-                                              style: AppFonts.cairoFont(color: AppColors.danger),
-                                            ),
-                                            onPressed: () => _confirmDelete(product),
-                                          ),
-                                        ],
-                                      ),
+                                      if (admin != null && (admin.hasPermission(AdminPermissions.productsEdit) || admin.hasPermission(AdminPermissions.productsDelete))) ...[
+                                        const Divider(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          children: [
+                                            if (admin.hasPermission(AdminPermissions.productsEdit))
+                                              TextButton.icon(
+                                                icon: const Icon(
+                                                  Icons.edit_outlined,
+                                                  color: AppColors.info,
+                                                  size: 18,
+                                                ),
+                                                label: Text(
+                                                  'تعديل المنتج',
+                                                  style: AppFonts.cairoFont(color: AppColors.info),
+                                                ),
+                                                onPressed: () => _openEditProduct(product),
+                                              ),
+                                            if (admin.hasPermission(AdminPermissions.productsDelete)) ...[
+                                              const SizedBox(width: 12),
+                                              TextButton.icon(
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: AppColors.danger,
+                                                  size: 18,
+                                                ),
+                                                label: Text(
+                                                  'حذف',
+                                                  style: AppFonts.cairoFont(color: AppColors.danger),
+                                                ),
+                                                onPressed: () => _confirmDelete(product),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
