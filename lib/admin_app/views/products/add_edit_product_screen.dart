@@ -16,8 +16,9 @@ import '../../providers/product_provider.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final ProductModel? productToEdit;
+  final String? initialCategoryId;
 
-  const AddEditProductScreen({super.key, this.productToEdit});
+  const AddEditProductScreen({super.key, this.productToEdit, this.initialCategoryId});
 
   @override
   State<AddEditProductScreen> createState() => _AddEditProductScreenState();
@@ -54,6 +55,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         if (mainIndex != -1) {
           setState(() {
             _selectedMainCat = catProvider.mainCategories[mainIndex];
+          });
+        }
+      } else if (widget.initialCategoryId != null) {
+        final initialIndex = catProvider.mainCategories.indexWhere((c) => c.id == widget.initialCategoryId);
+        if (initialIndex != -1) {
+          setState(() {
+            _selectedMainCat = catProvider.mainCategories[initialIndex];
           });
         }
       }
