@@ -458,6 +458,23 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     }
   }
 
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case AppConstants.statusPending:
+        return Icons.hourglass_top_rounded;
+      case AppConstants.statusAcceptedPreparing:
+        return Icons.soup_kitchen_rounded;
+      case AppConstants.statusDelivering:
+        return Icons.delivery_dining;
+      case AppConstants.statusDelivered:
+        return Icons.task_alt_rounded;
+      case AppConstants.statusCanceled:
+        return Icons.cancel_rounded;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
   /// Refined and styled Order Card
   Widget _buildOrderCard(OrderModel order, OrderManagementProvider provider) {
     Color statusColor;
@@ -478,6 +495,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         statusColor = AppColors.danger;
     }
 
+    final statusIcon = _getStatusIcon(order.status);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -523,14 +541,36 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(Icons.receipt_long, color: AppColors.primary, size: 20),
-                          const SizedBox(width: 6),
+                          // Prominent Visual Status Circle for illiterate users & admin
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: statusColor.withAlpha(30),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: statusColor.withAlpha(100), width: 1.5),
+                            ),
+                            child: Icon(
+                              statusIcon,
+                              color: statusColor,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
                           Flexible(
-                            child: Text(
-                              'طلب #${order.orderNumber}',
-                              style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'طلب #${order.orderNumber}',
+                                  style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  Formatters.formatDateTime(order.createdAt),
+                                  style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey.shade600),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -542,19 +582,26 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       children: [
                         // Status Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: statusColor.withAlpha(20),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: statusColor.withAlpha(40)),
+                            color: statusColor.withAlpha(25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: statusColor.withAlpha(80)),
                           ),
-                          child: Text(
-                            order.statusArabic,
-                            style: AppFonts.cairoFont(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: statusColor,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(statusIcon, size: 14, color: statusColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                order.statusArabic,
+                                style: AppFonts.cairoFont(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -902,20 +949,20 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
         switch (index) {
           case 0:
-            stepLabel = 'معلق';
-            stepIcon = Icons.hourglass_empty;
+            stepLabel = 'معلق ⏳';
+            stepIcon = Icons.hourglass_top_rounded;
             break;
           case 1:
-            stepLabel = 'تحضير';
-            stepIcon = Icons.restaurant;
+            stepLabel = 'تحضير 🍳';
+            stepIcon = Icons.soup_kitchen_rounded;
             break;
           case 2:
-            stepLabel = 'توصيل';
+            stepLabel = 'توصيل 🛵';
             stepIcon = Icons.delivery_dining;
             break;
           case 3:
-            stepLabel = status == AppConstants.statusCanceled ? 'ملغي' : 'مكتمل';
-            stepIcon = status == AppConstants.statusCanceled ? Icons.cancel : Icons.check_circle;
+            stepLabel = status == AppConstants.statusCanceled ? 'ملغي ❌' : 'مكتمل ✅';
+            stepIcon = status == AppConstants.statusCanceled ? Icons.cancel_rounded : Icons.task_alt_rounded;
             break;
         }
 
@@ -940,22 +987,39 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(3),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: EdgeInsets.all(isCurrent ? 6 : 4),
                     decoration: BoxDecoration(
-                      color: stepColor.withAlpha(20),
+                      color: isDone ? stepColor.withAlpha(isCurrent ? 40 : 20) : Colors.grey.shade100,
                       shape: BoxShape.circle,
-                      border: Border.all(color: stepColor, width: 1.5),
+                      border: Border.all(
+                        color: isDone ? stepColor : Colors.grey.shade300,
+                        width: isCurrent ? 2.5 : 1.5,
+                      ),
+                      boxShadow: isCurrent
+                          ? [
+                              BoxShadow(
+                                color: stepColor.withAlpha(80),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              )
+                            ]
+                          : [],
                     ),
-                    child: Icon(stepIcon, size: 10, color: stepColor),
+                    child: Icon(
+                      stepIcon,
+                      size: isCurrent ? 16 : 13,
+                      color: isDone ? stepColor : Colors.grey.shade400,
+                    ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     stepLabel,
                     style: AppFonts.cairoFont(
-                      fontSize: 8,
+                      fontSize: isCurrent ? 9.5 : 8.5,
                       fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                      color: isCurrent ? stepColor : Colors.grey.shade600,
+                      color: isCurrent ? stepColor : (isDone ? Colors.black87 : Colors.grey.shade500),
                     ),
                   ),
                 ],

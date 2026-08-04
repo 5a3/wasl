@@ -201,7 +201,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               activeScreen = FavoritesScreen(scrollController: controller);
               break;
             case 2:
-              activeScreen = const CartScreen();
+              activeScreen = CartScreen(
+                scrollController: controller,
+                onOrderPlaced: () {
+                  setState(() {
+                    _currentIndex = 3; // Switch to My Orders tab
+                  });
+                },
+              );
               break;
             case 3:
               activeScreen = CustomerOrdersScreen(scrollController: controller);

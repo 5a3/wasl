@@ -15,7 +15,10 @@ import '../../providers/customer_order_provider.dart';
 import '../../../shared/providers/store_provider.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final ScrollController? scrollController;
+  final VoidCallback? onOrderPlaced;
+
+  const CartScreen({super.key, this.scrollController, this.onOrderPlaced});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -99,6 +102,7 @@ class _CartScreenState extends State<CartScreen> {
         context,
         'تم إرسال طلبك بنجاح إلى الإدارة! يمكنك متابعة حالة الطلب من شاشة طلباتي.',
       );
+      widget.onOrderPlaced?.call();
     } else if (orderProvider.errorMessage != null) {
       CustomDialog.showErrorSnackBar(context, orderProvider.errorMessage!);
     }
@@ -126,6 +130,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             )
           : SingleChildScrollView(
+              controller: widget.scrollController,
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
