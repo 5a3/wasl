@@ -759,21 +759,29 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.remove_red_eye_outlined, size: 16, color: Colors.green.shade700),
-                        const SizedBox(width: 6),
-                        Text(
-                          'تمت القراءة بواسطة ($readCount) عميل 👁️',
-                          style: AppFonts.cairoFont(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.remove_red_eye_outlined, size: 16, color: Colors.green.shade700),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'تمت القراءة بواسطة ($readCount) عميل 👁️',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppFonts.cairoFont(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade800,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'عرض التقرير التفصيلي',
