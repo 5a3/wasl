@@ -121,6 +121,16 @@ class CustomerDrawer extends StatelessWidget {
                 ),
                 _buildDrawerTile(
                   context,
+                  icon: Icons.storefront_outlined,
+                  title: 'اطلب من محل آخر 🏬',
+                  badgeText: 'قريباً 🚀',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    CustomDialog.showOrderFromAnotherStoreDialog(context);
+                  },
+                ),
+                _buildDrawerTile(
+                  context,
                   icon: Icons.rate_review_outlined,
                   title: 'الشكاوى والمقترحات 📩',
                   onTap: () {
@@ -228,12 +238,39 @@ class CustomerDrawer extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? badgeText,
   }) {
     return ListTile(
       leading: Icon(icon, color: AppColors.primary),
-      title: Text(
-        title,
-        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (badgeText != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withAlpha(60),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                badgeText,
+                style: AppFonts.cairoFont(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+        ],
       ),
       trailing: const Icon(
         Icons.arrow_forward_ios,
