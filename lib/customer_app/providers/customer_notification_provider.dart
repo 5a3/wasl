@@ -6,47 +6,47 @@ import '../../core/constants/firebase_constants.dart';
 import '../../shared/models/notification_model.dart';
 
 /// Provider for Customer App to fetch notifications, listen to real-time broadcasts,
-/// trigger pop-up banners, and track per-customer read/unread status.
+/// store local personal order notifications, and support customer deletion.
 class CustomerNotificationProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static const String _keyReadNotificationIds = 'read_notification_ids';
-  static const String _keyNotifiedNotificationIds = 'notified_notification_ids';
+  static const String _keyDeletedNotificationIds = 'deleted_notification_ids';
 
   List<NotificationModel> _notifications = [];
   Set<String> _readIds = {};
-  Set<String> _notifiedIds = {};
+  Set<String> _deletedIds = {};
   bool _isLoading = false;
   StreamSubscription<QuerySnapshot>? _subscription;
 
-  List<NotificationModel> get notifications => _notifications;
+  List<NotificationModel> get notifications => _notifications
+      .where((n) => !_deletedIds.contains(n.id))
+      .toList();
   bool get isLoading => _isLoading;
 
   int get unreadCount {
-    return _notifications.where((n) => !_readIds.contains(n.id)).length;
+    return notifications.where((n) => !_readIds.contains(n.id)).length;
   }
 
   bool isRead(String id) => _readIds.contains(id);
 
-  /// Load read and notified notification IDs and start real-time Firestore stream listener
-  Future<void> fetchNotifications() async {
-    if (_subscription != null) return; // Already listening
+  /// Load read, notified, and deleted notifications
+  Future<void> fetchNotifications({String? currentCustomerId}) async {
+    _subscription?.cancel();
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      // 1. Load local read & notified notification IDs from SharedPreferences
+      // 1. Load local preferences for read/deleted IDs
       final prefs = await SharedPreferences.getInstance();
       final savedReadList = prefs.getStringList(_keyReadNotificationIds) ?? [];
-      final savedNotifiedList = prefs.getStringList(_keyNotifiedNotificationIds) ?? [];
+      final savedDeletedList = prefs.getStringList(_keyDeletedNotificationIds) ?? [];
 
       _readIds = savedReadList.toSet();
-      _notifiedIds = savedNotifiedList.toSet();
+      _deletedIds = savedDeletedList.toSet();
 
-      bool isInitialLoad = true;
-
-      // 2. Start real-time Firestore stream listener
+      // 2. Start real-time Firestore stream listener for general broadcast notifications
       _subscription = _firestore
           .collection(FirebaseConstants.collectionNotifications)
           .orderBy('createdAt', descending: true)
@@ -57,26 +57,12 @@ class CustomerNotificationProvider extends ChangeNotifier {
 
         for (var doc in snapshot.docs) {
           final notification = NotificationModel.fromMap(doc.data(), doc.id);
-          updatedList.add(notification);
-        }
+          final target = notification.targetCustomerId;
 
-        if (isInitialLoad) {
-          // On initial app launch / login load: record all existing IDs as notified
-          for (var n in updatedList) {
-            _notifiedIds.add(n.id);
-          }
-          isInitialLoad = false;
-          _saveNotifiedIds();
-        } else {
-          // Record newly added notification IDs silently for state tracking
-          for (var change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added) {
-              final doc = change.doc;
-              final notification = NotificationModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-              if (!_notifiedIds.contains(notification.id)) {
-                _notifiedIds.add(notification.id);
-                _saveNotifiedIds();
-              }
+          // Strictly keep general broadcast notifications from Firestore (promotions / announcements from admin)
+          if (target == null || target.isEmpty) {
+            if (!_deletedIds.contains(notification.id)) {
+              updatedList.add(notification);
             }
           }
         }
@@ -93,16 +79,6 @@ class CustomerNotificationProvider extends ChangeNotifier {
       debugPrint('Error initializing notification provider: $e');
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  /// Persist notified IDs to SharedPreferences
-  Future<void> _saveNotifiedIds() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_keyNotifiedNotificationIds, _notifiedIds.toList());
-    } catch (e) {
-      debugPrint('Error saving notified notification IDs: $e');
     }
   }
 

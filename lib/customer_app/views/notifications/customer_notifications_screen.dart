@@ -7,7 +7,7 @@ import '../../../shared/models/notification_model.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../providers/customer_notification_provider.dart';
 
-/// Screen displaying notifications for customer with filter tabs (All | Unread | Read)
+/// Screen displaying general notifications and broadcasts for customer
 class CustomerNotificationsScreen extends StatefulWidget {
   const CustomerNotificationsScreen({super.key});
 
@@ -17,13 +17,15 @@ class CustomerNotificationsScreen extends StatefulWidget {
 
 class _CustomerNotificationsScreenState extends State<CustomerNotificationsScreen> {
   // 0: الكل, 1: غير المقروءة, 2: المقروءة
-  int _filterIndex = 0;
+  int _subFilter = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<CustomerNotificationProvider>(context, listen: false).fetchNotifications();
+      final customerAuth = Provider.of<CustomerAuthProvider>(context, listen: false);
+      Provider.of<CustomerNotificationProvider>(context, listen: false)
+          .fetchNotifications(currentCustomerId: customerAuth.currentCustomer?.id);
     });
   }
 
@@ -135,15 +137,16 @@ class _CustomerNotificationsScreenState extends State<CustomerNotificationsScree
   Widget build(BuildContext context) {
     final provider = Provider.of<CustomerNotificationProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final list = provider.notifications;
 
-    // Filter notifications list based on _filterIndex
-    List<NotificationModel> filteredNotifications = provider.notifications;
-    if (_filterIndex == 1) {
-      // Unread only
-      filteredNotifications = provider.notifications.where((n) => !provider.isRead(n.id)).toList();
-    } else if (_filterIndex == 2) {
-      // Read only
-      filteredNotifications = provider.notifications.where((n) => provider.isRead(n.id)).toList();
+    final unreadCount = list.where((n) => !provider.isRead(n.id)).length;
+    final readCount = list.where((n) => provider.isRead(n.id)).length;
+
+    List<NotificationModel> displayedList = list;
+    if (_subFilter == 1) {
+      displayedList = list.where((n) => !provider.isRead(n.id)).toList();
+    } else if (_subFilter == 2) {
+      displayedList = list.where((n) => provider.isRead(n.id)).toList();
     }
 
     return Scaffold(
@@ -156,209 +159,203 @@ class _CustomerNotificationsScreenState extends State<CustomerNotificationsScree
         foregroundColor: isDark ? Colors.white : Colors.black87,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          // Filter Chips Bar (الكل | غير المقروءة | المقروءة)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: isDark ? AppColors.darkSurface : Colors.grey.shade50,
-            child: Row(
+      body: provider.isLoading && provider.notifications.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                _buildFilterChip(
-                  label: 'الكل (${provider.notifications.length})',
-                  index: 0,
-                  isSelected: _filterIndex == 0,
+                // Sub-filter Chips Bar (الكل | غير المقروءة 🔔 | المقروءة)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: isDark ? AppColors.darkSurface : Colors.grey.shade100,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(
+                        label: 'الكل (${list.length})',
+                        isSelected: _subFilter == 0,
+                        onSelected: () => setState(() => _subFilter = 0),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: 'غير المقروءة 🔔 ($unreadCount)',
+                        isSelected: _subFilter == 1,
+                        isHighlight: unreadCount > 0,
+                        onSelected: () => setState(() => _subFilter = 1),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: 'المقروءة ($readCount)',
+                        isSelected: _subFilter == 2,
+                        onSelected: () => setState(() => _subFilter = 2),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  label: 'غير المقروءة (${provider.unreadCount})',
-                  index: 1,
-                  isSelected: _filterIndex == 1,
-                  isHighlight: provider.unreadCount > 0,
-                ),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  label: 'المقروءة',
-                  index: 2,
-                  isSelected: _filterIndex == 2,
-                ),
-              ],
-            ),
-          ),
 
-          Expanded(
-            child: provider.isLoading && provider.notifications.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : filteredNotifications.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _filterIndex == 1
-                                  ? Icons.mark_email_read_outlined
-                                  : Icons.notifications_none_outlined,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _filterIndex == 1
-                                  ? 'لا توجد إشعارات غير مقروءة'
-                                  : _filterIndex == 2
-                                      ? 'لا توجد إشعارات مقروءة'
-                                      : 'لا توجد إشعارات حالياً',
-                              style: AppFonts.cairoFont(fontSize: 15, color: Colors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () => provider.fetchNotifications(),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredNotifications.length,
-                          itemBuilder: (context, index) {
-                            final item = filteredNotifications[index];
-                            final isRead = provider.isRead(item.id);
+                Expanded(
+                  child: displayedList.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.campaign_outlined,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _subFilter == 1
+                                    ? 'لا توجد إشعارات غير مقروءة 🔔'
+                                    : _subFilter == 2
+                                        ? 'لا توجد إشعارات مقروءة 📑'
+                                        : 'لا توجد إشعارات عامة حالياً 📢',
+                                style: AppFonts.cairoFont(fontSize: 15, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () {
+                            final customerAuth = Provider.of<CustomerAuthProvider>(context, listen: false);
+                            return provider.fetchNotifications(currentCustomerId: customerAuth.currentCustomer?.id);
+                          },
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: displayedList.length,
+                            itemBuilder: (context, index) {
+                              final item = displayedList[index];
+                              final isRead = provider.isRead(item.id);
 
-                            return GestureDetector(
-                              onTap: () => _showNotificationDetail(context, item),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isRead
-                                      ? (isDark ? AppColors.darkSurface : Colors.white)
-                                      : AppColors.primary.withAlpha(isDark ? 30 : 15),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
+                              return GestureDetector(
+                                onTap: () => _showNotificationDetail(context, item),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
                                     color: isRead
-                                        ? (isDark ? AppColors.darkBorder : Colors.grey.shade200)
-                                        : AppColors.primary.withAlpha(80),
-                                    width: isRead ? 1 : 1.5,
+                                        ? (isDark ? AppColors.darkSurface : Colors.white)
+                                        : AppColors.primary.withAlpha(isDark ? 30 : 15),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isRead
+                                          ? (isDark ? AppColors.darkBorder : Colors.grey.shade200)
+                                          : AppColors.primary.withAlpha(80),
+                                      width: isRead ? 1 : 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withAlpha(isDark ? 10 : 4),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlpha(isDark ? 10 : 4),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: isRead
-                                            ? Colors.grey.shade300.withAlpha(100)
-                                            : AppColors.primary,
-                                        shape: BoxShape.circle,
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: isRead ? Colors.grey.shade300.withAlpha(100) : AppColors.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          isRead ? Icons.notifications_none : Icons.notifications_active,
+                                          color: isRead ? Colors.grey.shade700 : Colors.white,
+                                          size: 20,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        isRead ? Icons.notifications_none : Icons.notifications_active,
-                                        color: isRead ? Colors.grey.shade700 : Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  item.title,
-                                                  style: AppFonts.cairoFont(
-                                                    fontSize: 14,
-                                                    fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                                                    color: isRead ? null : AppColors.primary,
-                                                  ),
-                                                ),
-                                              ),
-                                              if (!isRead)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: AppColors.primary,
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
                                                   child: Text(
-                                                    'جديد',
+                                                    item.title,
                                                     style: AppFonts.cairoFont(
-                                                      fontSize: 9,
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 14,
+                                                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                                      color: isRead ? null : AppColors.primary,
                                                     ),
                                                   ),
                                                 ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            item.body,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppFonts.cairoFont(
-                                              fontSize: 12,
-                                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                                                if (!isRead)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      'جديد',
+                                                      style: AppFonts.cairoFont(
+                                                        fontSize: 9,
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            Formatters.formatDateTime(item.createdAt),
-                                            style: AppFonts.cairoFont(
-                                              fontSize: 10,
-                                              color: Colors.grey.shade500,
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              item.body,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppFonts.cairoFont(
+                                                fontSize: 12,
+                                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              Formatters.formatDateTime(item.createdAt),
+                                              style: AppFonts.cairoFont(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildFilterChip({
     required String label,
-    required int index,
     required bool isSelected,
+    required VoidCallback onSelected,
     bool isHighlight = false,
   }) {
-    return FilterChip(
+    return ChoiceChip(
       selected: isSelected,
       label: Text(
         label,
         style: AppFonts.cairoFont(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           color: isSelected
               ? Colors.white
-              : (isHighlight ? AppColors.danger : Colors.grey.shade700),
+              : (isHighlight ? AppColors.danger : Colors.grey.shade800),
         ),
       ),
       backgroundColor: isHighlight ? AppColors.danger.withAlpha(15) : Colors.grey.shade200,
       selectedColor: AppColors.primary,
-      checkmarkColor: Colors.white,
-      onSelected: (_) {
-        setState(() {
-          _filterIndex = index;
-        });
-      },
+      onSelected: (_) => onSelected(),
     );
   }
 }

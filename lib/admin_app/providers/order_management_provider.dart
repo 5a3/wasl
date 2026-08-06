@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/services/fcm_service.dart';
 import '../../shared/models/order_model.dart';
 
 /// Provider for Admin to manage and listen to all orders with optimized queries and pagination
@@ -326,6 +327,27 @@ class OrderManagementProvider extends ChangeNotifier {
           final order = OrderModel.fromMap(orderDoc.data()!, orderDoc.id);
           await _updateDailyReport(order);
         }
+      }
+
+      // Trigger Push Notification exclusively to the specific Customer who placed the order (No Firestore doc creation)
+      try {
+        final orderDoc = await orderRef.get();
+        if (orderDoc.exists && orderDoc.data() != null) {
+          final order = OrderModel.fromMap(orderDoc.data()!, orderDoc.id);
+          final targetCustomerId = order.customerId;
+          final orderNumber = order.orderNumber;
+
+          FcmService.sendCustomerOrderStatusNotification(
+            orderNumber: orderNumber,
+            status: newStatus,
+            customerId: targetCustomerId,
+          ).catchError((e) {
+            debugPrint('Error sending customer order status push: $e');
+            return false;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error triggering customer order status push: $e');
       }
 
       notifyListeners();

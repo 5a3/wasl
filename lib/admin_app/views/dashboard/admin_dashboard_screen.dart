@@ -20,6 +20,7 @@ import '../complaints/admin_complaints_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
 import '../../../core/constants/admin_permissions.dart';
+import '../../../core/services/fcm_service.dart';
 
 class DashboardTab {
   final Widget screen;
@@ -42,6 +43,14 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FcmService.subscribeToAdminTopic();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

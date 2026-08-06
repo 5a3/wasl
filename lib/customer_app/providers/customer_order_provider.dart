@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/services/fcm_service.dart';
 import '../../shared/models/delivery_zone_model.dart';
 import '../../shared/models/order_model.dart';
 import '../../shared/models/user_model.dart';
@@ -103,6 +104,18 @@ class CustomerOrderProvider extends ChangeNotifier {
       );
 
       await docRef.set(newOrder.toMap());
+
+      // Send Push Notification exclusively to Admin devices subscribed to 'all_admins'
+      FcmService.sendAdminNewOrderNotification(
+        orderNumber: orderNumber,
+        customerName: customer.fullName,
+        customerPhone: customer.phone,
+        deliveryZoneName: zone.zoneName,
+        totalAmount: totalAmount,
+      ).catchError((e) {
+        debugPrint('Error sending admin push notification: $e');
+        return false;
+      });
 
       _isLoading = false;
       notifyListeners();

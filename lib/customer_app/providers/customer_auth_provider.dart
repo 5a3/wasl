@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/fcm_service.dart';
 import '../../shared/models/user_model.dart';
 
 /// Provider for Customer Registration & Authentication
@@ -57,6 +58,7 @@ class CustomerAuthProvider extends ChangeNotifier {
               .timeout(const Duration(seconds: 3));
           if (doc.exists && doc.data() != null) {
             _currentCustomer = UserModel.fromMap(doc.data()!, doc.id);
+            FcmService.subscribeToCustomerPersonalTopic(_currentCustomer!.id);
             notifyListeners();
           }
         } catch (_) {}
@@ -118,6 +120,7 @@ class CustomerAuthProvider extends ChangeNotifier {
       );
 
       await docRef.set(newCustomer.toMap());
+      FcmService.subscribeToCustomerPersonalTopic(newCustomer.id);
 
       _isLoading = false;
       notifyListeners();
@@ -187,6 +190,9 @@ class CustomerAuthProvider extends ChangeNotifier {
         phone: customer.phone,
         address: customer.address,
       );
+
+      // Subscribe device to customer personal FCM topic
+      FcmService.subscribeToCustomerPersonalTopic(customer.id);
 
       _isLoading = false;
       notifyListeners();
@@ -330,6 +336,9 @@ class CustomerAuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (_currentCustomer != null) {
+      await FcmService.unsubscribeFromCustomerPersonalTopic(_currentCustomer!.id);
+    }
     _currentCustomer = null;
     await StorageService.clearCustomerSession();
     notifyListeners();

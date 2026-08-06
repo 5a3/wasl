@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_constants.dart';
 import '../constants/firebase_constants.dart';
 import '../widgets/custom_dialog.dart';
 
@@ -22,9 +23,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 /// Core service for handling push notifications via Firebase Cloud Messaging & Flutter Local Notifications
 class FcmService {
-  FcmService._();
-
   static const String topicAllCustomers = 'all_customers';
+  static const String topicAllAdmins = 'all_admins';
 
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -156,6 +156,52 @@ class FcmService {
     }
   }
 
+  /// Subscribe device to Admin notifications topic ('all_admins') and unsubscribe from customer topic ('all_customers')
+  static Future<void> subscribeToAdminTopic() async {
+    if (kIsWeb) return;
+    try {
+      await _messaging.unsubscribeFromTopic(topicAllCustomers);
+      await _messaging.subscribeToTopic(topicAllAdmins);
+      debugPrint('FCM: Subscribed to admin topic [$topicAllAdmins] & unsubscribed from [$topicAllCustomers]');
+    } catch (e) {
+      debugPrint('FCM error subscribing to admin topic: $e');
+    }
+  }
+
+  /// Unsubscribe device from Admin notifications topic ('all_admins') upon logout and re-subscribe to customer topic
+  static Future<void> unsubscribeFromAdminTopic() async {
+    if (kIsWeb) return;
+    try {
+      await _messaging.unsubscribeFromTopic(topicAllAdmins);
+      await _messaging.subscribeToTopic(topicAllCustomers);
+      debugPrint('FCM: Unsubscribed from admin topic [$topicAllAdmins] & subscribed to [$topicAllCustomers]');
+    } catch (e) {
+      debugPrint('FCM error unsubscribing from admin topic: $e');
+    }
+  }
+
+  /// Subscribe device to customer personal notification topic ('customer_$customerId')
+  static Future<void> subscribeToCustomerPersonalTopic(String customerId) async {
+    if (kIsWeb || customerId.isEmpty) return;
+    try {
+      await _messaging.subscribeToTopic('customer_$customerId');
+      debugPrint('FCM: Subscribed to personal customer topic [customer_$customerId]');
+    } catch (e) {
+      debugPrint('FCM error subscribing to personal customer topic: $e');
+    }
+  }
+
+  /// Unsubscribe device from customer personal notification topic ('customer_$customerId')
+  static Future<void> unsubscribeFromCustomerPersonalTopic(String customerId) async {
+    if (kIsWeb || customerId.isEmpty) return;
+    try {
+      await _messaging.unsubscribeFromTopic('customer_$customerId');
+      debugPrint('FCM: Unsubscribed from personal customer topic [customer_$customerId]');
+    } catch (e) {
+      debugPrint('FCM error unsubscribing from personal customer topic: $e');
+    }
+  }
+
   /// Ensures notification permission is granted before navigating to Notifications.
   /// Shows a clean explanation dialog if permission hasn't been granted yet.
   static Future<bool> ensurePermissionWithDialog(BuildContext context) async {
@@ -243,11 +289,11 @@ class FcmService {
     );
   }
 
-  /// Send broadcast push notification via FCM HTTP API to all subscribed devices
-  /// Send broadcast push notification via Google FCM V1 HTTP API to all subscribed devices
+  /// Send push notification via FCM HTTP API to a target topic (defaults to topicAllCustomers)
   static Future<bool> sendHttpPushNotification({
     required String title,
     required String body,
+    String topic = topicAllCustomers,
   }) async {
     try {
       // 1. Try FCM V1 via service_account.json asset if present
@@ -276,7 +322,7 @@ class FcmService {
           },
           body: jsonEncode({
             'message': {
-              'topic': topicAllCustomers,
+              'topic': topic,
               'notification': {
                 'title': title,
                 'body': body,
@@ -298,7 +344,7 @@ class FcmService {
           }),
         );
 
-        debugPrint('FCM V1 Push response: ${response.statusCode} ${response.body}');
+        debugPrint('FCM V1 Push response for [$topic]: ${response.statusCode} ${response.body}');
         authClient.close();
         if (response.statusCode == 200) return true;
       }
@@ -312,7 +358,7 @@ class FcmService {
           'Authorization': 'key=${FirebaseConstants.fcmServerKey}',
         },
         body: jsonEncode({
-          'to': '/topics/$topicAllCustomers',
+          'to': '/topics/$topic',
           'priority': 'high',
           'notification': {
             'title': title,
@@ -331,11 +377,77 @@ class FcmService {
         }),
       );
 
-      debugPrint('FCM HTTP Push response: ${response.statusCode} ${response.body}');
+      debugPrint('FCM HTTP Push response for [$topic]: ${response.statusCode} ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('Error sending FCM Push: $e');
+      debugPrint('Error sending FCM Push to [$topic]: $e');
       return false;
     }
+  }
+
+  /// Helper specifically for sending a push notification to Admins only when a new order is placed
+  static Future<bool> sendAdminNewOrderNotification({
+    required String orderNumber,
+    required String customerName,
+    required String customerPhone,
+    required String deliveryZoneName,
+    required double totalAmount,
+  }) async {
+    final phoneText = customerPhone.isNotEmpty ? ' ($customerPhone)' : '';
+    final zoneText = deliveryZoneName.isNotEmpty ? ' - المنطقة: $deliveryZoneName' : '';
+    return sendHttpPushNotification(
+      topic: topicAllAdmins,
+      title: '🛍️ طلب جديد برقم #$orderNumber',
+      body: 'قام العميل $customerName$phoneText بطلب جديد بقيمة ${totalAmount.toStringAsFixed(0)} ر.ي 💰$zoneText. اضغط لمراجعة الطلب والتجهيز.',
+    );
+  }
+
+  /// Helper for sending order status updates to a specific customer ONLY
+  static Future<bool> sendCustomerOrderStatusNotification({
+    required String orderNumber,
+    required String status,
+    String? customerId,
+  }) async {
+    String title = 'تحديث حالة الطلب #$orderNumber 📦';
+    String body = 'تم تغيير حالة طلبك برقم #$orderNumber';
+
+    final cleanStatus = status.trim().toLowerCase();
+
+    if (cleanStatus == AppConstants.statusAcceptedPreparing.toLowerCase() ||
+        cleanStatus == 'acceptedpreparing' ||
+        cleanStatus.contains('تجهيز') ||
+        cleanStatus.contains('تحضير') ||
+        cleanStatus.contains('قبول')) {
+      title = '🍳 تم قبول طلبك #$orderNumber';
+      body = 'تم قبول طلبك بنجاح سيتم تحضيره الان بكل حب';
+    } else if (cleanStatus == AppConstants.statusDelivering.toLowerCase() ||
+        cleanStatus == 'delivering' ||
+        cleanStatus.contains('توصيل') ||
+        cleanStatus.contains('طريق')) {
+      title = '🛵 المندوب في الطريق #$orderNumber';
+      body = 'تم تجهيز طلبك المندوب في طريقه اليك';
+    } else if (cleanStatus == AppConstants.statusDelivered.toLowerCase() ||
+        cleanStatus == 'delivered' ||
+        cleanStatus.contains('تسليم') ||
+        cleanStatus.contains('مكتمل')) {
+      title = '😋 تم توصيل الطلب #$orderNumber';
+      body = 'تم تسليم الطلب بنجاح، نتمنى لك وجبة شهية وممتعة! ✨';
+    } else if (cleanStatus == AppConstants.statusCanceled.toLowerCase() ||
+        cleanStatus == 'canceled' ||
+        cleanStatus.contains('إلغاء') ||
+        cleanStatus.contains('الغاء')) {
+      title = '❌ تم إلغاء الطلب #$orderNumber';
+      body = 'تم إلغاء طلبك إذا كانت هناك أي مشكلة تواصل مع الإدارة';
+    }
+
+    final String targetTopic = (customerId != null && customerId.isNotEmpty)
+        ? 'customer_$customerId'
+        : topicAllCustomers;
+
+    return sendHttpPushNotification(
+      topic: targetTopic,
+      title: title,
+      body: body,
+    );
   }
 }

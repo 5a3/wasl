@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/fcm_service.dart';
 import '../../shared/models/admin_model.dart';
 
 /// Provider for Admin authentication & sub-admin list management with full CRUD & Search
@@ -253,6 +254,7 @@ class AdminAuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _currentAdmin = null;
     await StorageService.clearAdminSession();
+    await FcmService.unsubscribeFromAdminTopic();
     notifyListeners();
   }
 }

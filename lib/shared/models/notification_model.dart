@@ -40,6 +40,7 @@ class NotificationModel {
   final String body;
   final DateTime createdAt;
   final String sentBy;
+  final String? targetCustomerId; // null for general broadcast, customerId for personal
   final List<NotificationReceipt> readReceipts;
 
   NotificationModel({
@@ -48,6 +49,7 @@ class NotificationModel {
     required this.body,
     required this.createdAt,
     required this.sentBy,
+    this.targetCustomerId,
     this.readReceipts = const [],
   });
 
@@ -58,6 +60,7 @@ class NotificationModel {
       'body': body,
       'createdAt': Timestamp.fromDate(createdAt),
       'sentBy': sentBy,
+      if (targetCustomerId != null) 'targetCustomerId': targetCustomerId,
       'readReceipts': readReceipts.map((r) => r.toMap()).toList(),
     };
   }
@@ -75,6 +78,7 @@ class NotificationModel {
       body: map['body'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       sentBy: map['sentBy'] ?? '',
+      targetCustomerId: map['targetCustomerId'],
       readReceipts: receipts,
     );
   }
