@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/services/firebase_storage_service.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../core/constants/admin_permissions.dart';
@@ -205,9 +206,11 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                               : Image.file(_pickedImageFile, fit: BoxFit.cover, width: double.infinity),
                         )
                       : (widget.categoryToEdit != null && widget.categoryToEdit!.imageUrl.isNotEmpty
-                          ? ClipRRect(
+                          ? CustomCachedImage(
+                              imageUrl: widget.categoryToEdit!.imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
                               borderRadius: BorderRadius.circular(14),
-                              child: Image.network(widget.categoryToEdit!.imageUrl, fit: BoxFit.cover, width: double.infinity),
                             )
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,

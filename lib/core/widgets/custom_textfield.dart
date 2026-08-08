@@ -57,7 +57,7 @@ class CustomTextField extends StatelessWidget {
           style: AppFonts.cairoFont(fontSize: 14),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade500),
+            hintStyle: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade600),
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
             suffixIcon: suffixIcon,
           ),

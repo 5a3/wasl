@@ -411,7 +411,12 @@ class _AdFormBottomSheetState extends State<_AdFormBottomSheet> {
                         ? (kIsWeb
                             ? Image.memory(_pickedImage as Uint8List, width: double.infinity, height: 130, fit: BoxFit.cover)
                             : Image.file(_pickedImage as File, width: double.infinity, height: 130, fit: BoxFit.cover))
-                        : Image.network(widget.adToEdit!.imageUrl, width: double.infinity, height: 130, fit: BoxFit.cover),
+                        : CustomCachedImage(
+                            imageUrl: widget.adToEdit!.imageUrl,
+                            width: double.infinity,
+                            height: 130,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 ),
               ],

@@ -14,7 +14,7 @@ import '../views/my_orders/customer_orders_screen.dart';
 import '../views/profile/profile_screen.dart';
 import '../views/complaints/customer_complaint_screen.dart';
 
-/// Official Customer Navigation Drawer Component
+/// Official Responsive & Modern Customer Navigation Drawer Component
 class CustomerDrawer extends StatelessWidget {
   const CustomerDrawer({super.key});
 
@@ -31,30 +31,31 @@ class CustomerDrawer extends StatelessWidget {
             : 'عميل وصل لي';
     final customerPhone =
         customer?.phone.isNotEmpty == true ? customer!.phone : '';
-    final customerEmail =
-        customer?.email.isNotEmpty == true ? customer!.email : '';
+    final customerAddress =
+        customer?.address.isNotEmpty == true ? customer!.address : '';
 
     return Drawer(
       backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
       child: Column(
         children: [
-          // Header Profile Card
+          // Header Profile Card with App SVG Logo & User Address Capsule
           UserAccountsDrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withAlpha(200)],
+                colors: isDark
+                    ? [AppColors.darkSurfaceLight, AppColors.darkSurface]
+                    : [AppColors.primary, AppColors.primary.withAlpha(200)],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
             ),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Text(
-                customerName.isNotEmpty ? customerName[0].toUpperCase() : 'ع',
-                style: AppFonts.cairoFont(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SvgPicture.asset(
+                  'assets/images/logo.svg',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
@@ -66,17 +67,61 @@ class CustomerDrawer extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            accountEmail: Text(
-              customerPhone.isNotEmpty ? customerPhone : customerEmail,
-              style: AppFonts.cairoFont(fontSize: 12, color: Colors.white70),
+            accountEmail: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (customerPhone.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.phone_iphone_rounded, size: 13, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        customerPhone,
+                        style: AppFonts.cairoFont(fontSize: 11.5, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(28),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withAlpha(45), width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          customerAddress.isNotEmpty ? customerAddress : 'العنوان غير محدد 📍',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppFonts.cairoFont(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Menu Items
+          // 2. Menu Options List
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               children: [
+                _buildSectionTitle('الخدمات والطلبات', isDark),
+                const SizedBox(height: 4),
                 _buildDrawerTile(
                   context,
                   icon: Icons.receipt_long_outlined,
@@ -85,9 +130,7 @@ class CustomerDrawer extends StatelessWidget {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder:
-                            (_) =>
-                                const CustomerOrdersScreen(isStandalone: true),
+                        builder: (_) => const CustomerOrdersScreen(isStandalone: true),
                       ),
                     );
                   },
@@ -100,8 +143,7 @@ class CustomerDrawer extends StatelessWidget {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder:
-                            (_) => const FavoritesScreen(isStandalone: true),
+                        builder: (_) => const FavoritesScreen(isStandalone: true),
                       ),
                     );
                   },
@@ -122,7 +164,7 @@ class CustomerDrawer extends StatelessWidget {
                 _buildDrawerTile(
                   context,
                   icon: Icons.storefront_outlined,
-                  title: 'اطلب من محل آخر 🏬',
+                  title: 'اطلب من محل آخر',
                   badgeText: 'قريباً 🚀',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -132,7 +174,7 @@ class CustomerDrawer extends StatelessWidget {
                 _buildDrawerTile(
                   context,
                   icon: Icons.rate_review_outlined,
-                  title: 'الشكاوى والمقترحات 📩',
+                  title: 'الشكاوى والمقترحات',
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -143,7 +185,18 @@ class CustomerDrawer extends StatelessWidget {
                   },
                 ),
 
-                const Divider(indent: 16, endIndent: 16),
+                // Subtle Thin Divider
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: isDark ? Colors.white.withAlpha(20) : Colors.grey.withAlpha(40),
+                  ),
+                ),
+
+                _buildSectionTitle('التطبيق والإعدادات', isDark),
+                const SizedBox(height: 4),
 
                 _buildDrawerTile(
                   context,
@@ -168,67 +221,117 @@ class CustomerDrawer extends StatelessWidget {
                   },
                 ),
 
-                // Theme Mode Switch
-                ListTile(
-                  leading: Icon(
-                    themeProvider.isDarkMode
-                        ? Icons.dark_mode_outlined
-                        : Icons.light_mode_outlined,
-                    color: AppColors.primary,
+                // Theme Mode Switch Tile
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurfaceLight.withAlpha(80) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  title: Text(
-                    themeProvider.isDarkMode ? 'الوضع الليلي' : 'الوضع النهارى',
-                    style: AppFonts.cairoFont(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    leading: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        themeProvider.isDarkMode
+                            ? Icons.dark_mode_outlined
+                            : Icons.light_mode_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  trailing: Switch(
-                    value: themeProvider.isDarkMode,
-                    activeColor: AppColors.primary,
-                    onChanged: (val) {
-                      themeProvider.toggleTheme(val);
-                    },
+                    title: Text(
+                      themeProvider.isDarkMode ? 'الوضع الليلي' : 'الوضع النهارى',
+                      style: AppFonts.cairoFont(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: themeProvider.isDarkMode,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) {
+                        themeProvider.toggleTheme(val);
+                      },
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Logout Footer Button
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: AppColors.danger),
-            title: Text(
-              'تسجيل الخروج',
-              style: AppFonts.cairoFont(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.danger,
+          // 3. Responsive Safe Area Logout Footer (Guarantees no overlap on Redmi / Samsung phones)
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Material(
+                color: AppColors.danger.withAlpha(isDark ? 30 : 15),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () async {
+                    final confirm = await CustomDialog.showConfirmDialog(
+                      context: context,
+                      title: 'تسجيل الخروج 🚪',
+                      message: 'هل أنت تأكد من أنك تريد تسجيل الخروج من تطبيق وصل لي؟',
+                      confirmText: 'تسجيل الخروج',
+                      cancelText: 'إلغاء',
+                      confirmColor: AppColors.danger,
+                    );
+                    if (confirm == true) {
+                      await authProvider.logout();
+                      navigatorKey.currentState?.pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const CustomerLoginScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.logout_rounded, color: AppColors.danger, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'تسجيل الخروج',
+                          style: AppFonts.cairoFont(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            onTap: () async {
-              final confirm = await CustomDialog.showConfirmDialog(
-                context: context,
-                title: 'تسجيل الخروج 🚪',
-                message: 'هل أنت تأكد من أنك تريد تسجيل الخروج من تطبيق وصل لي؟',
-                confirmText: 'تسجيل الخروج',
-                cancelText: 'إلغاء',
-                confirmColor: AppColors.danger,
-              );
-              if (confirm == true) {
-                await authProvider.logout();
-                navigatorKey.currentState?.pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const CustomerLoginScreen(),
-                  ),
-                  (route) => false,
-                );
-              }
-            },
           ),
-          const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12, top: 4, bottom: 4),
+      child: Text(
+        title,
+        style: AppFonts.cairoFont(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+        ),
       ),
     );
   }
@@ -240,44 +343,72 @@ class CustomerDrawer extends StatelessWidget {
     required VoidCallback onTap,
     String? badgeText,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.transparent : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        leading: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withAlpha(18),
+            borderRadius: BorderRadius.circular(10),
           ),
-          if (badgeText != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(20),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primary.withAlpha(60),
-                  width: 0.8,
-                ),
-              ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        title: Row(
+          children: [
+            Expanded(
               child: Text(
-                badgeText,
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppFonts.cairoFont(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-        ],
+            if (badgeText != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withAlpha(60),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  badgeText,
+                  style: AppFonts.cairoFont(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 12,
+          color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+        ),
+        onTap: onTap,
       ),
-      trailing: const Icon(
-        Icons.arrow_forward_ios,
-        size: 14,
-        color: Colors.grey,
-      ),
-      onTap: onTap,
     );
   }
 
@@ -358,7 +489,11 @@ class CustomerDrawer extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    const Divider(),
+                    Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 10),
 
                     // Comprehensive Description

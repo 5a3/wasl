@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/services/firebase_storage_service.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../shared/models/category_model.dart';
@@ -320,10 +321,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey, width: 1),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(url, fit: BoxFit.cover),
-                          ),
+                          child: CustomCachedImage(imageUrl: url, fit: BoxFit.cover, width: 90, height: 90),
                         )),
                     ],
                   ),

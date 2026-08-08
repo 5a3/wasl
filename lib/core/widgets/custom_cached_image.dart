@@ -44,6 +44,15 @@ class CustomCachedImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        errorListener: (error) {
+          debugPrint('CustomCachedImage error for $imageUrl: $error');
+          // If cached file was purged by OS cache manager or missing on disk, evict stale entry
+          if (error.toString().contains('PathNotFoundException') ||
+              error.toString().contains('No such file') ||
+              error.toString().contains('libCachedImageData')) {
+            CachedNetworkImage.evictFromCache(imageUrl);
+          }
+        },
         placeholder: (context, url) => Shimmer.fromColors(
           baseColor: Colors.grey.shade300,
           highlightColor: Colors.grey.shade100,

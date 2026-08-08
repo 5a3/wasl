@@ -892,8 +892,14 @@ class _MenuScreenState extends State<MenuScreen> {
 
   /// Modern search bar
   Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hintColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final iconColor = isDark ? Colors.white70 : Colors.grey.shade700;
+    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
+    final fillColor = isDark ? AppColors.darkSurfaceLight : Colors.white;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 5, 16, 8),
       child: TextField(
         controller: _searchController,
         onChanged: (val) {
@@ -901,17 +907,33 @@ class _MenuScreenState extends State<MenuScreen> {
             _searchQuery = val;
           });
         },
+        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
         decoration: InputDecoration(
-          hintText: 'ابحث عن وجبتك المفضلة أو مشروبك... 🔍',
-          prefixIcon: const Icon(Icons.search, size: 20),
+          hintText: 'ابحث عن وجبتك المفضلة أو مشروبك...',
+          hintStyle: AppFonts.cairoFont(
+            color: hintColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(Icons.search, size: 20, color: iconColor),
+          filled: true,
+          fillColor: fillColor,
           contentPadding: const EdgeInsets.symmetric(
-            vertical: 8,
+            vertical: 10,
             horizontal: 16,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: borderColor, width: 1.2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           suffixIcon:
               _searchQuery.isNotEmpty
                   ? IconButton(
-                    icon: const Icon(Icons.clear, size: 18),
+                    icon: Icon(Icons.clear, size: 18, color: hintColor),
                     onPressed: () {
                       _searchController.clear();
                       setState(() {

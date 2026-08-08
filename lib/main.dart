@@ -34,6 +34,7 @@ import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/providers/complaint_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
+import 'customer_app/views/home/customer_home_screen.dart';
 import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
 import 'shared/providers/store_provider.dart';
@@ -55,14 +56,44 @@ void main() async {
   try {
     await Firebase.initializeApp();
 
-    // Pass all uncaught Flutter framework errors to Crashlytics
+    // Helper to check if an error is an expected non-fatal image resource loading issue
+    bool isImageLoadingError(dynamic exception, String? library) {
+      final errStr = exception.toString();
+      return library == 'image resource service' ||
+          errStr.contains('HttpException: Invalid statusCode') ||
+          errStr.contains('PathNotFoundException') ||
+          errStr.contains('libCachedImageData') ||
+          errStr.contains('No such file or directory');
+    }
+
+    // Pass uncaught Flutter framework errors to Crashlytics
     FlutterError.onError = (errorDetails) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      if (isImageLoadingError(errorDetails.exception, errorDetails.library)) {
+        debugPrint('Non-fatal image resource error suppressed from fatal crashlytics: ${errorDetails.exception}');
+        FirebaseCrashlytics.instance.recordError(
+          errorDetails.exception,
+          errorDetails.stack,
+          reason: 'Non-fatal image loading error',
+          fatal: false,
+        );
+      } else {
+        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      }
     };
 
     // Pass all uncaught asynchronous errors that aren't handled by Flutter framework to Crashlytics
     PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      if (isImageLoadingError(error, null)) {
+        debugPrint('Non-fatal async image resource error suppressed from fatal crashlytics: $error');
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stack,
+          reason: 'Non-fatal async image loading error',
+          fatal: false,
+        );
+      } else {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      }
       return true;
     };
 
@@ -158,8 +189,8 @@ class WaslAppMain extends StatelessWidget {
         return OfflineBannerWrapper(child: child ?? const SizedBox.shrink());
       },
       home: StorageService.isCustomerLoggedIn()
-          ? const AppLauncherChooserScreen()
-          : const AppLauncherChooserScreen(),
+          ? const CustomerHomeScreen()
+          : const CustomerLoginScreen(),
     );
   }
 }
