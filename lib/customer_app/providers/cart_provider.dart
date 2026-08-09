@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../admin_app/providers/category_provider.dart';
+import '../../shared/models/category_model.dart';
 import '../../shared/models/delivery_zone_model.dart';
 import '../../shared/models/order_model.dart';
 import '../../shared/models/product_model.dart';
@@ -10,12 +12,17 @@ class CartProvider extends ChangeNotifier {
   final Map<String, OrderItemModel> _items = {};
   DeliveryZoneModel? _selectedZone;
   String? _currentCustomerId;
+  CategoryProvider? _categoryProvider;
 
   Map<String, OrderItemModel> get items => _items;
   List<OrderItemModel> get itemList => _items.values.toList();
   int get itemCount => _items.length;
   DeliveryZoneModel? get selectedZone => _selectedZone;
   String? get currentCustomerId => _currentCustomerId;
+
+  void setCategoryProvider(CategoryProvider? categoryProvider) {
+    _categoryProvider = categoryProvider;
+  }
 
   double get subtotal {
     double total = 0.0;
@@ -75,13 +82,15 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addToCart(ProductModel product) {
+  void addToCart(ProductModel product, {CategoryModel? category}) {
+    final cat = category ?? _categoryProvider?.getCategoryById(product.mainCategoryId);
+    final effectivePrice = product.getEffectivePrice(cat);
     if (_items.containsKey(product.id)) {
       final old = _items[product.id]!;
       _items[product.id] = OrderItemModel(
         productId: old.productId,
         productName: old.productName,
-        price: old.price,
+        price: effectivePrice,
         quantity: old.quantity + 1,
         imageUrl: old.imageUrl.isNotEmpty ? old.imageUrl : (product.images.isNotEmpty ? product.images.first : ''),
       );
@@ -89,7 +98,7 @@ class CartProvider extends ChangeNotifier {
       _items[product.id] = OrderItemModel(
         productId: product.id,
         productName: product.name,
-        price: product.price,
+        price: effectivePrice,
         quantity: 1,
         imageUrl: product.images.isNotEmpty ? product.images.first : '',
       );

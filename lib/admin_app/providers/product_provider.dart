@@ -44,7 +44,7 @@ class ProductProvider extends ChangeNotifier {
       final snapshot = await _firestore
           .collection(FirebaseConstants.collectionProducts)
           .orderBy('createdAt', descending: true)
-          .get(const GetOptions(source: Source.serverAndCache));
+          .get();
 
       _products = snapshot.docs
           .map((doc) => ProductModel.fromMap(doc.data(), doc.id))
@@ -59,7 +59,7 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  /// Add new product with up to 3 images
+  /// Add new product with up to 3 images and optional discount settings
   Future<bool> addProduct({
     required String name,
     required String description,
@@ -68,6 +68,9 @@ class ProductProvider extends ChangeNotifier {
     required String subCategoryId,
     required List<String> images,
     bool isAvailable = true,
+    bool hasDiscount = false,
+    String discountType = 'percentage',
+    double discountValue = 0.0,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionProducts).doc();
@@ -81,6 +84,9 @@ class ProductProvider extends ChangeNotifier {
         images: images.take(3).toList(),
         isAvailable: isAvailable,
         salesCount: 0,
+        hasDiscount: hasDiscount,
+        discountType: discountType,
+        discountValue: discountValue,
         createdAt: DateTime.now(),
       );
 
@@ -95,7 +101,7 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  /// Full Product Edit (name, price, description, images, category, availability)
+  /// Full Product Edit (name, price, description, images, category, availability, discount)
   Future<bool> editProduct({
     required String id,
     required String name,
@@ -105,6 +111,9 @@ class ProductProvider extends ChangeNotifier {
     required String subCategoryId,
     required List<String> images,
     required bool isAvailable,
+    bool hasDiscount = false,
+    String discountType = 'percentage',
+    double discountValue = 0.0,
   }) async {
     try {
       final index = _products.indexWhere((p) => p.id == id);
@@ -120,6 +129,9 @@ class ProductProvider extends ChangeNotifier {
           images: images.isNotEmpty ? images.take(3).toList() : old.images,
           isAvailable: isAvailable,
           salesCount: old.salesCount,
+          hasDiscount: hasDiscount,
+          discountType: discountType,
+          discountValue: discountValue,
           createdAt: old.createdAt,
         );
 

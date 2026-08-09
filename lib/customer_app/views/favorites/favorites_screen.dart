@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/product_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_cached_image.dart';
+import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
@@ -120,6 +122,15 @@ class FavoritesScreen extends StatelessWidget {
     FavoriteProvider favProvider,
     CartProvider cartProvider,
   ) {
+    final catProvider = Provider.of<CategoryProvider>(context);
+    CategoryModel? category;
+    try {
+      category = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
+    } catch (_) {}
+
+    final hasDisc = product.hasEffectiveDiscount(category);
+    final effectivePrice = product.getEffectivePrice(category);
+
     final isFav = favProvider.isFavorite(product.id);
     final cartItem = cartProvider.items[product.id];
     final isInCart = cartItem != null;
@@ -179,6 +190,26 @@ class FavoritesScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (hasDisc)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '🔥 ${product.getDiscountBadgeText(category)}',
+                          style: AppFonts.cairoFont(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   // Unavailable Overlay
                   if (!product.isAvailable)
                     Positioned.fill(
@@ -271,12 +302,32 @@ class FavoritesScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            Formatters.formatCurrency(product.price),
-                            style: AppFonts.cairoFont(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (hasDisc)
+                                  Text(
+                                    Formatters.formatCurrency(product.price),
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 10.5,
+                                      color: Colors.grey.shade500,
+                                      decoration: TextDecoration.lineThrough,
+                                      decorationColor: Colors.grey.shade500,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                Text(
+                                  Formatters.formatCurrency(effectivePrice),
+                                  style: AppFonts.cairoFont(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasDisc ? Colors.green.shade700 : AppColors.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                           // Interactive Quantity Stepper / Add to Cart Button
@@ -325,7 +376,7 @@ class FavoritesScreen extends StatelessWidget {
                                   InkWell(
                                     onTap: () {
                                       if (product.isAvailable) {
-                                        cartProvider.addToCart(product);
+                                        cartProvider.addToCart(product, category: category);
                                       }
                                     },
                                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
@@ -345,7 +396,7 @@ class FavoritesScreen extends StatelessWidget {
                             InkWell(
                               onTap: () {
                                 if (product.isAvailable) {
-                                  cartProvider.addToCart(product);
+                                  cartProvider.addToCart(product, category: category);
                                 }
                               },
                               borderRadius: BorderRadius.circular(10),

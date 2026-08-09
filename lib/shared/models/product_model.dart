@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'category_model.dart';
 
-/// Product Model supporting max 3 images and availability toggle
+/// Product Model supporting max 3 images, availability toggle, and product/category level discounts
 class ProductModel {
   final String id;
   final String name;
@@ -11,6 +12,9 @@ class ProductModel {
   final List<String> images; // Up to 3 images
   final bool isAvailable;
   final int salesCount;
+  final bool hasDiscount;
+  final String discountType; // 'percentage' or 'fixed'
+  final double discountValue;
   final DateTime createdAt;
 
   ProductModel({
@@ -23,8 +27,65 @@ class ProductModel {
     required this.images,
     this.isAvailable = true,
     this.salesCount = 0,
+    this.hasDiscount = false,
+    this.discountType = 'percentage',
+    this.discountValue = 0.0,
     required this.createdAt,
   });
+
+  /// Check if an effective discount is active for this product (direct or via category)
+  bool hasEffectiveDiscount(CategoryModel? category) {
+    if (hasDiscount && discountValue > 0) return true;
+    if (category != null && category.hasDiscount && category.discountValue > 0) return true;
+    return false;
+  }
+
+  /// Calculates the final discounted price after applying product or category level discounts
+  double getEffectivePrice(CategoryModel? category) {
+    if (hasDiscount && discountValue > 0) {
+      if (discountType == 'percentage') {
+        final calc = price * (1 - (discountValue / 100));
+        return calc < 0 ? 0.0 : calc;
+      } else {
+        final calc = price - discountValue;
+        return calc < 0 ? 0.0 : calc;
+      }
+    } else if (category != null && category.hasDiscount && category.discountValue > 0) {
+      if (category.discountType == 'percentage') {
+        final calc = price * (1 - (category.discountValue / 100));
+        return calc < 0 ? 0.0 : calc;
+      } else {
+        final calc = price - category.discountValue;
+        return calc < 0 ? 0.0 : calc;
+      }
+    }
+    return price;
+  }
+
+  /// Returns total money saved per item
+  double getSavingsAmount(CategoryModel? category) {
+    final effective = getEffectivePrice(category);
+    final savings = price - effective;
+    return savings < 0 ? 0.0 : savings;
+  }
+
+  /// Returns localized text for discount badge (e.g., "خصم 20%" or "خصم 500 ر.ي")
+  String getDiscountBadgeText(CategoryModel? category) {
+    if (hasDiscount && discountValue > 0) {
+      if (discountType == 'percentage') {
+        return 'خصم ${discountValue.toStringAsFixed(0)}%';
+      } else {
+        return 'خصم ${discountValue.toStringAsFixed(0)} ر.ي';
+      }
+    } else if (category != null && category.hasDiscount && category.discountValue > 0) {
+      if (category.discountType == 'percentage') {
+        return 'خصم ${category.discountValue.toStringAsFixed(0)}%';
+      } else {
+        return 'خصم ${category.discountValue.toStringAsFixed(0)} ر.ي';
+      }
+    }
+    return '';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,6 +98,9 @@ class ProductModel {
       'images': images,
       'isAvailable': isAvailable,
       'salesCount': salesCount,
+      'hasDiscount': hasDiscount,
+      'discountType': discountType,
+      'discountValue': discountValue,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -52,6 +116,9 @@ class ProductModel {
       images: List<String>.from(map['images'] ?? []),
       isAvailable: map['isAvailable'] ?? true,
       salesCount: map['salesCount'] ?? 0,
+      hasDiscount: map['hasDiscount'] ?? false,
+      discountType: map['discountType'] ?? 'percentage',
+      discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

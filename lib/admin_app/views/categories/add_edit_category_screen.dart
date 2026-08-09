@@ -27,10 +27,13 @@ class AddEditCategoryScreen extends StatefulWidget {
 class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late TextEditingController _discountValueController;
 
   dynamic _pickedImageFile;
   String? _pickedImageName;
   bool _isUploading = false;
+  bool _hasDiscount = false;
+  String _discountType = 'percentage';
 
   bool get isEditing => widget.categoryToEdit != null;
 
@@ -38,11 +41,19 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.categoryToEdit?.name ?? '');
+    _discountValueController = TextEditingController(
+      text: widget.categoryToEdit != null && widget.categoryToEdit!.discountValue > 0
+          ? widget.categoryToEdit!.discountValue.toString()
+          : '',
+    );
+    _hasDiscount = widget.categoryToEdit?.hasDiscount ?? false;
+    _discountType = widget.categoryToEdit?.discountType ?? 'percentage';
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _discountValueController.dispose();
     super.dispose();
   }
 
@@ -88,6 +99,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     }
 
     final categoryName = _nameController.text.trim();
+    final discountVal = _hasDiscount ? (double.tryParse(_discountValueController.text.trim()) ?? 0.0) : 0.0;
     final catProvider = Provider.of<CategoryProvider>(context, listen: false);
 
     setState(() {
@@ -116,12 +128,18 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
           name: categoryName,
           parentId: null,
           imageUrl: imageUrl,
+          hasDiscount: _hasDiscount,
+          discountType: _discountType,
+          discountValue: discountVal,
         );
       } else {
         ok = await catProvider.addCategory(
           name: categoryName,
           parentId: null,
           imageUrl: imageUrl,
+          hasDiscount: _hasDiscount,
+          discountType: _discountType,
+          discountValue: discountVal,
         );
       }
 
@@ -182,6 +200,90 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                 hintText: 'مثال: عصائر طازجة، وجبات سريعة...',
                 prefixIcon: Icons.category_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم الفئة' : null,
+              ),
+              const SizedBox(height: 16),
+              // Category Discount Container
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _hasDiscount ? AppColors.primary.withAlpha(15) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _hasDiscount ? AppColors.primary : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'تفعيل عرض / خصم شامل على جميع منتجات هذه الفئة 💥',
+                        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _hasDiscount ? 'سيتم تطبيق الخصم تلقائياً على كل الوجبات بالقسم 🟢' : 'بدون خصم شامل للفئة',
+                        style: AppFonts.cairoFont(fontSize: 12),
+                      ),
+                      value: _hasDiscount,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) {
+                        setState(() {
+                          _hasDiscount = val;
+                        });
+                      },
+                    ),
+                    if (_hasDiscount) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              value: _discountType,
+                              decoration: const InputDecoration(
+                                labelText: 'نوع الخصم',
+                                prefixIcon: Icon(Icons.local_offer_outlined),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'percentage', child: Text('نسبة %', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'fixed', child: Text('مبلغ ر.ي', overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() {
+                                    _discountType = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 1,
+                            child: CustomTextField(
+                              controller: _discountValueController,
+                              labelText: _discountType == 'percentage' ? 'نسبة الخصم (%)' : 'مبلغ الخصم (ر.ي)',
+                              hintText: _discountType == 'percentage' ? 'مثال: 15' : 'مثال: 300',
+                              keyboardType: TextInputType.number,
+                              prefixIcon: _discountType == 'percentage' ? Icons.percent : Icons.money_off_outlined,
+                              validator: (val) {
+                                if (!_hasDiscount) return null;
+                                if (val == null || val.trim().isEmpty) return 'ادخل قيمة الخصم';
+                                final numVal = double.tryParse(val.trim());
+                                if (numVal == null || numVal <= 0) return 'قيمة غير صحيحة';
+                                if (_discountType == 'percentage' && numVal > 100) return 'النسبة لا تتجاوز 100%';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               Text(

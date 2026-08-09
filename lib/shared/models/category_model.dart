@@ -1,4 +1,4 @@
-/// Category Model supporting Main and Sub categories
+/// Category Model supporting Main and Sub categories with discount support
 class CategoryModel {
   final String id;
   final String name;
@@ -6,6 +6,9 @@ class CategoryModel {
   final String imageUrl;
   final bool isActive;
   final int orderIndex;
+  final bool hasDiscount;
+  final String discountType; // 'percentage' or 'fixed'
+  final double discountValue;
 
   CategoryModel({
     required this.id,
@@ -14,6 +17,9 @@ class CategoryModel {
     required this.imageUrl,
     this.isActive = true,
     this.orderIndex = 0,
+    this.hasDiscount = false,
+    this.discountType = 'percentage',
+    this.discountValue = 0.0,
   });
 
   bool get isMainCategory => parentId == null || parentId!.isEmpty;
@@ -26,6 +32,9 @@ class CategoryModel {
       'imageUrl': imageUrl,
       'isActive': isActive,
       'orderIndex': orderIndex,
+      'hasDiscount': hasDiscount,
+      'discountType': discountType,
+      'discountValue': discountValue,
     };
   }
 
@@ -37,6 +46,9 @@ class CategoryModel {
       imageUrl: map['imageUrl'] ?? '',
       isActive: map['isActive'] ?? true,
       orderIndex: map['orderIndex'] ?? 0,
+      hasDiscount: map['hasDiscount'] ?? false,
+      discountType: map['discountType'] ?? 'percentage',
+      discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

@@ -303,15 +303,59 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                                     color: Colors.grey.shade600,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  Formatters.formatCurrency(product.price),
-                                                  style: AppFonts.cairoFont(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppColors.primary,
-                                                  ),
-                                                ),
+                                                 const SizedBox(height: 6),
+                                                 Builder(
+                                                   builder: (ctx) {
+                                                     CategoryModel? cat;
+                                                     try {
+                                                       cat = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
+                                                     } catch (_) {}
+                                                     final hasDisc = product.hasEffectiveDiscount(cat);
+                                                     final effectivePrice = product.getEffectivePrice(cat);
+
+                                                     return Wrap(
+                                                       crossAxisAlignment: WrapCrossAlignment.center,
+                                                       spacing: 6,
+                                                       runSpacing: 2,
+                                                       children: [
+                                                         if (hasDisc) ...[
+                                                           Text(
+                                                             Formatters.formatCurrency(product.price),
+                                                             style: AppFonts.cairoFont(
+                                                               fontSize: 10.5,
+                                                               color: Colors.grey.shade500,
+                                                               decoration: TextDecoration.lineThrough,
+                                                               decorationColor: Colors.grey.shade500,
+                                                             ),
+                                                           ),
+                                                           Container(
+                                                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                             decoration: BoxDecoration(
+                                                               color: AppColors.danger,
+                                                               borderRadius: BorderRadius.circular(6),
+                                                             ),
+                                                             child: Text(
+                                                               '🔥 ${product.getDiscountBadgeText(cat)}',
+                                                               style: AppFonts.cairoFont(
+                                                                 fontSize: 9,
+                                                                 color: Colors.white,
+                                                                 fontWeight: FontWeight.bold,
+                                                               ),
+                                                             ),
+                                                           ),
+                                                         ],
+                                                         Text(
+                                                           Formatters.formatCurrency(effectivePrice),
+                                                           style: AppFonts.cairoFont(
+                                                             fontSize: 13.5,
+                                                             fontWeight: FontWeight.bold,
+                                                             color: hasDisc ? Colors.green.shade700 : AppColors.primary,
+                                                           ),
+                                                         ),
+                                                       ],
+                                                     );
+                                                   },
+                                                 ),
                                               ],
                                             ),
                                           ),

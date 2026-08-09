@@ -32,9 +32,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late TextEditingController _nameController;
   late TextEditingController _descController;
   late TextEditingController _priceController;
+  late TextEditingController _discountValueController;
 
   CategoryModel? _selectedMainCat;
   bool _isAvailable = true;
+  bool _hasDiscount = false;
+  String _discountType = 'percentage';
   bool _isUploading = false;
 
   final List<dynamic> _pickedImageFiles = []; // File or Uint8List
@@ -48,7 +51,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _nameController = TextEditingController(text: widget.productToEdit?.name ?? '');
     _descController = TextEditingController(text: widget.productToEdit?.description ?? '');
     _priceController = TextEditingController(text: widget.productToEdit?.price.toString() ?? '');
+    _discountValueController = TextEditingController(
+      text: widget.productToEdit != null && widget.productToEdit!.discountValue > 0
+          ? widget.productToEdit!.discountValue.toString()
+          : '',
+    );
     _isAvailable = widget.productToEdit?.isAvailable ?? true;
+    _hasDiscount = widget.productToEdit?.hasDiscount ?? false;
+    _discountType = widget.productToEdit?.discountType ?? 'percentage';
     _existingImageUrls = List<String>.from(widget.productToEdit?.images ?? []);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,6 +86,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _nameController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _discountValueController.dispose();
     super.dispose();
   }
 
@@ -125,6 +136,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final prodProvider = Provider.of<ProductProvider>(context, listen: false);
     final prodName = _nameController.text.trim();
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
+    final discountVal = _hasDiscount ? (double.tryParse(_discountValueController.text.trim()) ?? 0.0) : 0.0;
 
     setState(() {
       _isUploading = true;
@@ -166,6 +178,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           subCategoryId: _selectedMainCat!.id,
           images: finalImageUrls,
           isAvailable: _isAvailable,
+          hasDiscount: _hasDiscount,
+          discountType: _discountType,
+          discountValue: discountVal,
         );
       } else {
         ok = await prodProvider.addProduct(
@@ -176,6 +191,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           subCategoryId: _selectedMainCat!.id,
           images: finalImageUrls,
           isAvailable: _isAvailable,
+          hasDiscount: _hasDiscount,
+          discountType: _discountType,
+          discountValue: discountVal,
         );
       }
 
@@ -253,13 +271,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               const SizedBox(height: 14),
               CustomTextField(
                 controller: _priceController,
-                labelText: 'السعر (بالريال اليمني)',
+                labelText: 'السعر الأصلي (بالريال اليمني)',
                 hintText: 'مثال: 1500',
                 keyboardType: TextInputType.number,
                 prefixIcon: Icons.attach_money_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال السعر' : null,
               ),
-               const SizedBox(height: 14),
+              const SizedBox(height: 14),
               DropdownButtonFormField<CategoryModel>(
                 value: _selectedMainCat,
                 decoration: const InputDecoration(
@@ -272,6 +290,90 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     _selectedMainCat = val;
                   });
                 },
+              ),
+              const SizedBox(height: 16),
+              // Discount Settings Container
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _hasDiscount ? AppColors.primary.withAlpha(15) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _hasDiscount ? AppColors.primary : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'تفعيل عرض / تخفيض على هذه الوجبة 🏷️🔥',
+                        style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _hasDiscount ? 'سيتم إظهار السعر القديم مشطوباً والجديد ملوناً 🟢' : 'بدون خصم خاص بالمنتج',
+                        style: AppFonts.cairoFont(fontSize: 12),
+                      ),
+                      value: _hasDiscount,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) {
+                        setState(() {
+                          _hasDiscount = val;
+                        });
+                      },
+                    ),
+                    if (_hasDiscount) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              value: _discountType,
+                              decoration: const InputDecoration(
+                                labelText: 'نوع الخصم',
+                                prefixIcon: Icon(Icons.local_offer_outlined),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'percentage', child: Text('نسبة %', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'fixed', child: Text('مبلغ ر.ي', overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() {
+                                    _discountType = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 1,
+                            child: CustomTextField(
+                              controller: _discountValueController,
+                              labelText: _discountType == 'percentage' ? 'نسبة الخصم (%)' : 'مبلغ الخصم (ر.ي)',
+                              hintText: _discountType == 'percentage' ? 'مثال: 20' : 'مثال: 500',
+                              keyboardType: TextInputType.number,
+                              prefixIcon: _discountType == 'percentage' ? Icons.percent : Icons.money_off_outlined,
+                              validator: (val) {
+                                if (!_hasDiscount) return null;
+                                if (val == null || val.trim().isEmpty) return 'ادخل قيمة الخصم';
+                                final numVal = double.tryParse(val.trim());
+                                if (numVal == null || numVal <= 0) return 'قيمة غير صحيحة';
+                                if (_discountType == 'percentage' && numVal > 100) return 'النسبة لا تتجاوز 100%';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               Text(

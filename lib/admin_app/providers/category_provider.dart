@@ -34,6 +34,14 @@ class CategoryProvider extends ChangeNotifier {
     return _categories.where((c) => c.parentId == parentId).toList();
   }
 
+  CategoryModel? getCategoryById(String id) {
+    try {
+      return _categories.firstWhere((c) => c.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> fetchCategories() async {
     _isLoading = true;
     _errorMessage = null;
@@ -43,7 +51,7 @@ class CategoryProvider extends ChangeNotifier {
       final snapshot = await _firestore
           .collection(FirebaseConstants.collectionCategories)
           .orderBy('orderIndex')
-          .get(const GetOptions(source: Source.serverAndCache));
+          .get();
 
       _categories = snapshot.docs
           .map((doc) => CategoryModel.fromMap(doc.data(), doc.id))
@@ -62,6 +70,9 @@ class CategoryProvider extends ChangeNotifier {
     required String name,
     String? parentId,
     required String imageUrl,
+    bool hasDiscount = false,
+    String discountType = 'percentage',
+    double discountValue = 0.0,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionCategories).doc();
@@ -71,6 +82,9 @@ class CategoryProvider extends ChangeNotifier {
         parentId: parentId,
         imageUrl: imageUrl,
         orderIndex: _categories.length,
+        hasDiscount: hasDiscount,
+        discountType: discountType,
+        discountValue: discountValue,
       );
 
       await docRef.set(newCat.toMap());
@@ -89,6 +103,9 @@ class CategoryProvider extends ChangeNotifier {
     required String name,
     String? parentId,
     required String imageUrl,
+    bool hasDiscount = false,
+    String discountType = 'percentage',
+    double discountValue = 0.0,
   }) async {
     try {
       final index = _categories.indexWhere((c) => c.id == id);
@@ -100,6 +117,9 @@ class CategoryProvider extends ChangeNotifier {
           imageUrl: imageUrl.isNotEmpty ? imageUrl : _categories[index].imageUrl,
           isActive: _categories[index].isActive,
           orderIndex: _categories[index].orderIndex,
+          hasDiscount: hasDiscount,
+          discountType: discountType,
+          discountValue: discountValue,
         );
 
         await _firestore

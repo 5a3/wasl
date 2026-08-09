@@ -10,12 +10,16 @@ class AppFonts {
     FontWeight fontWeight = FontWeight.normal,
     Color? color,
     double? height,
+    TextDecoration? decoration,
+    Color? decorationColor,
   }) {
     return GoogleFonts.cairo(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       height: height,
+      decoration: decoration,
+      decorationColor: decorationColor,
     );
   }
 

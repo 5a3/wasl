@@ -5,7 +5,9 @@ import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/custom_dialog.dart';
+import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../admin_app/providers/category_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
 
@@ -25,8 +27,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final favProvider = Provider.of<FavoriteProvider>(context);
+    final catProvider = Provider.of<CategoryProvider>(context);
     final isFav = favProvider.isFavorite(widget.product.id);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    CategoryModel? category;
+    try {
+      category = catProvider.categories.firstWhere((c) => c.id == widget.product.mainCategoryId);
+    } catch (_) {}
+
+    final hasDisc = widget.product.hasEffectiveDiscount(category);
+    final effectivePrice = widget.product.getEffectivePrice(category);
+    final savings = widget.product.getSavingsAmount(category);
 
     final isInCart = cartProvider.items.containsKey(widget.product.id);
     final currentQty = isInCart ? cartProvider.items[widget.product.id]!.quantity : 0;
@@ -182,17 +194,70 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
-                  // Price
-                  Text(
-                    Formatters.formatCurrency(widget.product.price),
-                    style: AppFonts.cairoFont(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  // Price Display with Discount Support
+                  if (hasDisc) ...[
+                    Row(
+                      children: [
+                        Text(
+                          Formatters.formatCurrency(widget.product.price),
+                          style: AppFonts.cairoFont(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                            decoration: TextDecoration.lineThrough,
+                            decorationColor: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '🔥 ${widget.product.getDiscountBadgeText(category)}',
+                            style: AppFonts.cairoFont(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          Formatters.formatCurrency(effectivePrice),
+                          style: AppFonts.cairoFont(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '(وفرت ${Formatters.formatCurrency(savings)}! 🎉)',
+                          style: AppFonts.cairoFont(
+                            fontSize: 12,
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else
+                    Text(
+                      Formatters.formatCurrency(widget.product.price),
+                      style: AppFonts.cairoFont(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   const Divider(height: 30),
 
                   // Description Header
@@ -248,7 +313,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   style: AppFonts.cairoFont(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
                                   ),
                                 ),
                                 const SizedBox(width: 24),
@@ -262,7 +326,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   child: IconButton(
                                     icon: const Icon(Icons.add, color: AppColors.primary),
                                     onPressed: () {
-                                      cartProvider.addToCart(widget.product);
+                                      cartProvider.addToCart(widget.product, category: category);
                                     },
                                   ),
                                 ),
@@ -286,7 +350,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ),
                               ),
                               onPressed: () {
-                                cartProvider.addToCart(widget.product);
+                                cartProvider.addToCart(widget.product, category: category);
                                 CustomDialog.showSuccessSnackBar(
                                   context,
                                   'تم إضافة ${widget.product.name} إلى السلة 🍔',

@@ -128,9 +128,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
         ChangeNotifierProvider(create: (_) => ComplaintProvider()),
-        ChangeNotifierProxyProvider<CustomerAuthProvider, CartProvider>(
+        ChangeNotifierProxyProvider2<CustomerAuthProvider, CategoryProvider, CartProvider>(
           create: (_) => CartProvider(),
-          update: (_, auth, cart) {
+          update: (_, auth, categoryProvider, cart) {
+            cart?.setCategoryProvider(categoryProvider);
             final customer = auth.currentCustomer;
             if (cart != null) {
               if (customer != null) {

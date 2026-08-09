@@ -7,6 +7,7 @@ import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/product_provider.dart';
 import '../../../admin_app/providers/ad_provider.dart';
 import '../../../shared/models/ad_model.dart';
+import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
@@ -147,7 +148,7 @@ class _MenuScreenState extends State<MenuScreen> {
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 0.65,
+                childAspectRatio: 0.58,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
@@ -158,6 +159,10 @@ class _MenuScreenState extends State<MenuScreen> {
                 final qty =
                     isInCart ? cartProvider.items[product.id]!.quantity : 0;
                 final isDark = Theme.of(context).brightness == Brightness.dark;
+                CategoryModel? cat;
+                try {
+                  cat = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
+                } catch (_) {}
 
                 return _buildGridProductCard(
                   product,
@@ -167,6 +172,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   isDark,
                   favProvider,
                   cartProvider,
+                  cat,
                 );
               }, childCount: filteredProducts.length),
             ),
@@ -182,6 +188,12 @@ class _MenuScreenState extends State<MenuScreen> {
                 final qty =
                     isInCart ? cartProvider.items[product.id]!.quantity : 0;
                 final isDark = Theme.of(context).brightness == Brightness.dark;
+                CategoryModel? cat;
+                try {
+                  cat = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
+                } catch (_) {}
+                final hasDisc = product.hasEffectiveDiscount(cat);
+                final effectivePrice = product.getEffectivePrice(cat);
 
                 return GestureDetector(
                   onTap: () {
@@ -238,6 +250,26 @@ class _MenuScreenState extends State<MenuScreen> {
                                 ),
                               ),
                             ),
+                            if (hasDisc)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.danger,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '🔥 ${product.getDiscountBadgeText(cat)}',
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 9,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             if (!product.isAvailable)
                               Positioned.fill(
                                 child: Container(
@@ -319,12 +351,32 @@ class _MenuScreenState extends State<MenuScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    Formatters.formatCurrency(product.price),
-                                    style: AppFonts.cairoFont(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (hasDisc)
+                                          Text(
+                                            Formatters.formatCurrency(product.price),
+                                            style: AppFonts.cairoFont(
+                                              fontSize: 10.5,
+                                              color: Colors.grey.shade500,
+                                              decoration: TextDecoration.lineThrough,
+                                              decorationColor: Colors.grey.shade500,
+                                            ),
+                                            maxLines: 1,
+                                          ),
+                                        Text(
+                                          Formatters.formatCurrency(effectivePrice),
+                                          style: AppFonts.cairoFont(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: hasDisc ? Colors.green.shade700 : AppColors.primary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
 
@@ -381,7 +433,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                                 InkWell(
                                                   onTap:
                                                       () => cartProvider
-                                                          .addToCart(product),
+                                                          .addToCart(product, category: cat),
                                                   child: const Icon(
                                                     Icons.add,
                                                     color: AppColors.primary,
@@ -425,7 +477,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                               ),
                                             ),
                                             onPressed: () {
-                                              cartProvider.addToCart(product);
+                                              cartProvider.addToCart(product, category: cat);
                                               CustomDialog.showSuccessSnackBar(
                                                 context,
                                                 'تم إضافة ${product.name} إلى السلة',
@@ -460,7 +512,11 @@ class _MenuScreenState extends State<MenuScreen> {
     bool isDark,
     FavoriteProvider favProvider,
     CartProvider cartProvider,
+    CategoryModel? category,
   ) {
+    final hasDisc = product.hasEffectiveDiscount(category);
+    final effectivePrice = product.getEffectivePrice(category);
+
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -488,7 +544,7 @@ class _MenuScreenState extends State<MenuScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Stack with Favorite button overlay
+            // Image Stack with Favorite button overlay & Discount badge
             Stack(
               children: [
                 Hero(
@@ -544,6 +600,33 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   ),
                 ),
+                // Discount Badge Overlay
+                if (hasDisc)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '🔥 ${product.getDiscountBadgeText(category)}',
+                        style: AppFonts.cairoFont(
+                          fontSize: 9.5,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Unavailable Overlay
                 if (!product.isAvailable)
                   Positioned.fill(
@@ -611,15 +694,32 @@ class _MenuScreenState extends State<MenuScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            Formatters.formatCurrency(product.price),
-                            style: AppFonts.cairoFont(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (hasDisc)
+                                Text(
+                                  Formatters.formatCurrency(product.price),
+                                  style: AppFonts.cairoFont(
+                                    fontSize: 9.5,
+                                    color: Colors.grey.shade500,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: Colors.grey.shade500,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              Text(
+                                Formatters.formatCurrency(effectivePrice),
+                                style: AppFonts.cairoFont(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: hasDisc ? Colors.green.shade700 : AppColors.primary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                         if (product.isAvailable)
