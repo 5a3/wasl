@@ -279,12 +279,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<CategoryModel>(
+                isExpanded: true,
                 value: _selectedMainCat,
                 decoration: const InputDecoration(
                   labelText: 'اختر الفئة التابع لها المنتج',
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
-                items: mainCats.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.name))).toList(),
+                items: mainCats.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.name, overflow: TextOverflow.ellipsis))).toList(),
                 onChanged: (val) {
                   setState(() {
                     _selectedMainCat = val;

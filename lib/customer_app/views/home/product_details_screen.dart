@@ -8,6 +8,7 @@ import '../../../core/widgets/custom_dialog.dart';
 import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../admin_app/providers/category_provider.dart';
+import '../../../admin_app/providers/product_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
 
@@ -28,6 +29,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final cartProvider = Provider.of<CartProvider>(context);
     final favProvider = Provider.of<FavoriteProvider>(context);
     final catProvider = Provider.of<CategoryProvider>(context);
+    final productProvider = Provider.of<ProductProvider>(context);
+
     final isFav = favProvider.isFavorite(widget.product.id);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -47,12 +50,35 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         ? widget.product.images 
         : [''];
 
+    // Query similar / recommended products like top delivery apps (matching category or name)
+    final allProducts = productProvider.products;
+    final similarProducts = allProducts.where((p) {
+      if (p.id == widget.product.id) return false;
+      final sameCategory = p.mainCategoryId == widget.product.mainCategoryId || p.subCategoryId == widget.product.subCategoryId;
+      final nameSimilarity = p.name.trim().toLowerCase().split(' ').any((word) => 
+        word.length > 2 && widget.product.name.trim().toLowerCase().contains(word)
+      );
+      return sameCategory || nameSimilarity;
+    }).toList();
+
+    // Fallback if category recommendations are sparse
+    if (similarProducts.length < 3) {
+      for (final item in allProducts) {
+        if (item.id != widget.product.id && !similarProducts.contains(item)) {
+          similarProducts.add(item);
+        }
+        if (similarProducts.length >= 6) break;
+      }
+    }
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          // Elegant transparent Appbar with Product Hero Image Slider
+          // 1. Elegant transparent Appbar with Product Hero Image Slider
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: 290,
             pinned: true,
             backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
             flexibleSpace: FlexibleSpaceBar(
@@ -99,7 +125,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               (index) => AnimatedContainer(
                                 duration: const Duration(milliseconds: 250),
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                                width: _currentImageIndex == index ? 14 : 7,
+                                width: _currentImageIndex == index ? 16 : 7,
                                 height: 7,
                                 decoration: BoxDecoration(
                                   color: _currentImageIndex == index ? AppColors.primary : Colors.white70,
@@ -122,7 +148,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             leading: Padding(
               padding: const EdgeInsets.all(8.0),
               child: CircleAvatar(
-                backgroundColor: Colors.black.withAlpha(100),
+                backgroundColor: Colors.black.withAlpha(110),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.of(context).pop(),
@@ -133,7 +159,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: CircleAvatar(
-                  backgroundColor: Colors.black.withAlpha(100),
+                  backgroundColor: Colors.black.withAlpha(110),
                   child: IconButton(
                     icon: Icon(
                       isFav ? Icons.favorite : Icons.favorite_border,
@@ -148,21 +174,28 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
           ),
 
-          // Product Details Contents Card
+          // 2. Product Details Contents Card
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 100),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                color: isDark ? AppColors.darkSurface : Theme.of(context).scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(15),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title & Availability
+                  // Title & Availability Status Badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,22 +204,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         child: Text(
                           widget.product.name,
                           style: AppFonts.cairoFont(
-                            fontSize: 20,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: widget.product.isAvailable ? AppColors.success.withAlpha(20) : AppColors.danger.withAlpha(20),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: widget.product.isAvailable ? AppColors.success.withAlpha(50) : AppColors.danger.withAlpha(50)),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: widget.product.isAvailable ? AppColors.success.withAlpha(50) : AppColors.danger.withAlpha(50),
+                          ),
                         ),
                         child: Text(
                           widget.product.isAvailable ? 'متوفر حالياً 🟢' : 'غير متوفر 🔴',
                           style: AppFonts.cairoFont(
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             color: widget.product.isAvailable ? AppColors.success : AppColors.danger,
                           ),
@@ -194,7 +231,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 14),
 
                   // Price Display with Discount Support
                   if (hasDisc) ...[
@@ -203,7 +241,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         Text(
                           Formatters.formatCurrency(widget.product.price),
                           style: AppFonts.cairoFont(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: Colors.grey.shade500,
                             decoration: TextDecoration.lineThrough,
                             decorationColor: Colors.grey.shade500,
@@ -233,7 +271,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         Text(
                           Formatters.formatCurrency(effectivePrice),
                           style: AppFonts.cairoFont(
-                            fontSize: 20,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.green.shade700,
                           ),
@@ -253,19 +291,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     Text(
                       Formatters.formatCurrency(widget.product.price),
                       style: AppFonts.cairoFont(
-                        fontSize: 18,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                       ),
                     ),
-                  const Divider(height: 30),
+
+                  const Divider(height: 32),
 
                   // Description Header
                   Text(
                     'تفاصيل ومكونات الوجبة 📖',
                     style: AppFonts.cairoFont(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -276,111 +316,333 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ? widget.product.description
                         : 'لم يتم إضافة تفاصيل إضافية لهذا الصنف من قبل الإدارة. الوجبة تحضر طازجة وبأعلى جودة.',
                     style: AppFonts.cairoFont(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700,
                       height: 1.6,
                     ),
                   ),
-                  const SizedBox(height: 32),
 
-                  // Cart controls
-                  if (widget.product.isAvailable)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: isInCart
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Decrement button
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: AppColors.danger.withAlpha(100)),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.remove, color: AppColors.danger),
-                                    onPressed: () {
-                                      cartProvider.decrementItem(widget.product.id);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 24),
-                                
-                                // Quantity display
-                                Text(
-                                  '$currentQty',
-                                  style: AppFonts.cairoFont(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 24),
-                                
-                                // Increment button
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: AppColors.primary.withAlpha(100)),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.add, color: AppColors.primary),
-                                    onPressed: () {
-                                      cartProvider.addToCart(widget.product, category: category);
-                                    },
-                                  ),
-                                ),
-                              ],
-                            )
-                          : ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
-                              label: Text(
-                                'إضافة هذه الوجبة إلى الطلب 🛒',
-                                style: AppFonts.cairoFont(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              onPressed: () {
-                                cartProvider.addToCart(widget.product, category: category);
-                                CustomDialog.showSuccessSnackBar(
-                                  context,
-                                  'تم إضافة ${widget.product.name} إلى السلة 🍔',
-                                );
-                              },
-                            ),
-                    )
-                  else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'الصنف غير متوفر للطلب حالياً',
-                        textAlign: TextAlign.center,
-                        style: AppFonts.cairoFont(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
+                  const SizedBox(height: 28),
+
+                  // 3. Recommended Products Section ("وجبات قد تعجبك 🍽️")
+                  if (similarProducts.isNotEmpty) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'وجبات قد تعجبك 🍽️',
+                          style: AppFonts.cairoFont(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          ),
                         ),
+                        Text(
+                          'مقترحة لك',
+                          style: AppFonts.cairoFont(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      height: 205,
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: similarProducts.length,
+                        itemBuilder: (ctx, index) {
+                          final simProduct = similarProducts[index];
+                          final simFav = favProvider.isFavorite(simProduct.id);
+
+                          CategoryModel? simCat;
+                          try {
+                            simCat = catProvider.categories.firstWhere((c) => c.id == simProduct.mainCategoryId);
+                          } catch (_) {}
+
+                          final simHasDisc = simProduct.hasEffectiveDiscount(simCat);
+                          final simEffectivePrice = simProduct.getEffectivePrice(simCat);
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProductDetailsScreen(product: simProduct),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 150,
+                              margin: const EdgeInsets.only(left: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.darkBackground : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withAlpha(10),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Thumbnail Image with Favorite Button & Discount Badge
+                                  Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                        child: CustomCachedImage(
+                                          imageUrl: simProduct.images.isNotEmpty ? simProduct.images.first : '',
+                                          width: double.infinity,
+                                          height: 105,
+                                          fit: BoxFit.cover,
+                                          errorWidget: const Icon(Icons.fastfood, size: 40, color: Colors.grey),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 6,
+                                        left: 6,
+                                        child: GestureDetector(
+                                          onTap: () => favProvider.toggleFavorite(simProduct.id),
+                                          child: Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withAlpha(100),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              simFav ? Icons.favorite : Icons.favorite_border,
+                                              color: simFav ? AppColors.danger : Colors.white,
+                                              size: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (simHasDisc)
+                                        Positioned(
+                                          top: 6,
+                                          right: 6,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.danger,
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              simProduct.getDiscountBadgeText(simCat),
+                                              style: AppFonts.cairoFont(
+                                                fontSize: 9,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+
+                                  // Product Info
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          simProduct.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppFonts.cairoFont(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          simProduct.description.isNotEmpty 
+                                              ? simProduct.description 
+                                              : 'وجبة طازجة وبأعلى جودة...',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppFonts.cairoFont(
+                                            fontSize: 10,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        if (simHasDisc) ...[
+                                          Row(
+                                            children: [
+                                              Text(
+                                                Formatters.formatCurrency(simEffectivePrice),
+                                                style: AppFonts.cairoFont(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.green.shade700,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  Formatters.formatCurrency(simProduct.price),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: AppFonts.cairoFont(
+                                                    fontSize: 10,
+                                                    color: Colors.grey.shade500,
+                                                    decoration: TextDecoration.lineThrough,
+                                                    decorationColor: Colors.grey.shade500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ] else
+                                          Text(
+                                            Formatters.formatCurrency(simProduct.price),
+                                            style: AppFonts.cairoFont(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
           ),
         ],
+      ),
+
+        // 4. Fixed Sticky Bottom Action Bar (Always visible without scrolling!)
+        bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: widget.product.isAvailable
+              ? (isInCart
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Decrement button
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.danger.withAlpha(100)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.remove, color: AppColors.danger),
+                            onPressed: () {
+                              cartProvider.decrementItem(widget.product.id);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        
+                        // Quantity display
+                        Text(
+                          '$currentQty',
+                          style: AppFonts.cairoFont(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        
+                        // Increment button
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.primary.withAlpha(100)),
+                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.primary.withAlpha(20),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.add, color: AppColors.primary),
+                            onPressed: () {
+                              cartProvider.addToCart(widget.product, category: category);
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 22),
+                        label: Text(
+                          'إضافة هذه الوجبة إلى الطلب 🛒',
+                          style: AppFonts.cairoFont(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onPressed: () {
+                          cartProvider.addToCart(widget.product, category: category);
+                          CustomDialog.showSuccessSnackBar(
+                            context,
+                            'تم إضافة ${widget.product.name} إلى السلة 🍔',
+                          );
+                        },
+                      ),
+                    ))
+              : Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'الصنف غير متوفر للطلب حالياً',
+                    textAlign: TextAlign.center,
+                    style: AppFonts.cairoFont(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+        ),
       ),
     );
   }

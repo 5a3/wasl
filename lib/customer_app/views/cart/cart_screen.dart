@@ -277,6 +277,7 @@ class _CartScreenState extends State<CartScreen> {
                           : null;
 
                       return DropdownButtonFormField<DeliveryZoneModel>(
+                        isExpanded: true,
                         value: validZone,
                         decoration: const InputDecoration(
                           labelText: 'اختر منطقة التوصيل (المحددة من الإدارة)',
@@ -285,7 +286,10 @@ class _CartScreenState extends State<CartScreen> {
                         items: zoneProvider.activeZones.map((zone) {
                           return DropdownMenuItem(
                             value: zone,
-                            child: Text('${zone.zoneName} (+${Formatters.formatCurrency(zone.deliveryFee)})'),
+                            child: Text(
+                              '${zone.zoneName} (+${Formatters.formatCurrency(zone.deliveryFee)})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
