@@ -7,6 +7,7 @@ import '../../core/constants/firebase_constants.dart';
 import '../../core/services/fcm_service.dart';
 import '../../shared/models/delivery_zone_model.dart';
 import '../../shared/models/order_model.dart';
+import '../../shared/models/payment_method_model.dart';
 import '../../shared/models/user_model.dart';
 
 /// Provider for Customer Order placement and order tracking
@@ -60,16 +61,19 @@ class CustomerOrderProvider extends ChangeNotifier {
         );
   }
 
+  void listenToMyOrders(String customerId) => listenToCustomerOrders(customerId);
+
   /// Place New Order
   Future<bool> placeOrder({
     required UserModel customer,
-    required DeliveryZoneModel zone,
     required List<OrderItemModel> items,
+    required DeliveryZoneModel zone,
     required double subtotal,
     required double totalAmount,
     required String deliveryAddress,
     String? note,
     String? additionalPhone,
+    PaymentMethodModel? paymentMethod,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -106,6 +110,11 @@ class CustomerOrderProvider extends ChangeNotifier {
         items: items,
         note: note,
         additionalPhone: additionalPhone,
+        paymentMethodId: paymentMethod?.id,
+        paymentMethodName: paymentMethod?.name ?? 'الدفع عند الاستلام',
+        paymentNote: paymentMethod != null && paymentMethod.accountNumber.isNotEmpty
+            ? 'رقم الحساب/المحفظة للتحويل: ${paymentMethod.accountNumber}'
+            : null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

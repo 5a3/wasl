@@ -97,7 +97,13 @@ class AdminPermissions {
   static const String subAdminsEditPermissions = 'sub_admins_edit_permissions';
   static const String subAdminsDelete = 'sub_admins_delete';
 
-  /// All 10 Categorized Permission Groups with metadata for the UI
+  // --- 11. Payment Methods Module ---
+  static const String paymentMethodsView = 'payment_methods_view';
+  static const String paymentMethodsAdd = 'payment_methods_add';
+  static const String paymentMethodsEdit = 'payment_methods_edit';
+  static const String paymentMethodsDelete = 'payment_methods_delete';
+
+  /// All 11 Categorized Permission Groups with metadata for the UI
   static const List<AdminPermissionGroup> allGroups = [
     AdminPermissionGroup(
       id: 'products',
@@ -437,6 +443,39 @@ class AdminPermissions {
           title: 'حذف وسحب حساب المدير',
           description: 'مسح حساب المشرف وإيقاف إمكانيته للدخول نهائياً',
           icon: Icons.person_remove_alt_1_outlined,
+        ),
+      ],
+    ),
+
+    AdminPermissionGroup(
+      id: 'payment_methods',
+      title: '💳 طرق وحسابات الدفع',
+      icon: Icons.credit_card_outlined,
+      color: Colors.cyan,
+      items: [
+        AdminPermissionItem(
+          key: paymentMethodsView,
+          title: 'عرض طرق وحسابات الدفع',
+          description: 'استعراض طرق الدفع المفعلة وأرقام الحسابات',
+          icon: Icons.visibility_outlined,
+        ),
+        AdminPermissionItem(
+          key: paymentMethodsAdd,
+          title: 'إضافة طريقة دفع جديدة',
+          description: 'إدراج طريقة دفع أو رقم محفظة/حساب بنكي جديد',
+          icon: Icons.add_card_outlined,
+        ),
+        AdminPermissionItem(
+          key: paymentMethodsEdit,
+          title: 'تعديل وتفعيل طرق الدفع',
+          description: 'تغيير الاسم ورقم الحساب ومفتاح التفعيل والتوقيف',
+          icon: Icons.edit_note_outlined,
+        ),
+        AdminPermissionItem(
+          key: paymentMethodsDelete,
+          title: 'حذف طرق وسائط الدفع',
+          description: 'إزالة وطرح وسيلة الدفع نهائياً من القائمة',
+          icon: Icons.delete_outline,
         ),
       ],
     ),

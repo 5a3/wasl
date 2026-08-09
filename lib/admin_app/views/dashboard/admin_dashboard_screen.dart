@@ -17,6 +17,7 @@ import '../sub_admins/admin_sub_admins_screen.dart';
 import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
 import '../complaints/admin_complaints_screen.dart';
+import '../payment_methods/admin_payment_methods_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
 import '../../../core/constants/admin_permissions.dart';
@@ -361,6 +362,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const AdminComplaintsScreen()),
+                          );
+                        },
+                      ),
+
+                    // Option 6: Payment Methods & Accounts Management
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.paymentMethodsView, AdminPermissions.paymentMethodsAdd, AdminPermissions.paymentMethodsEdit]))
+                      _buildDrawerItem(
+                        icon: Icons.credit_card_outlined,
+                        title: 'إدارة طرق وسائط الدفع 💳',
+                        subtitle: 'تحديد الحسابات وطرق الدفع عند الشراء',
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AdminPaymentMethodsScreen(),
+                            ),
                           );
                         },
                       ),

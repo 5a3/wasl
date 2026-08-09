@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../admin_app/providers/delivery_zone_provider.dart';
+import '../../../admin_app/providers/payment_method_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
@@ -8,6 +9,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../shared/models/delivery_zone_model.dart';
+import '../../../shared/models/payment_method_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/customer_auth_provider.dart';
@@ -34,12 +36,14 @@ class _CartScreenState extends State<CartScreen> {
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   final _noteController = TextEditingController();
+  PaymentMethodModel? _selectedPaymentMethod;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<DeliveryZoneProvider>(context, listen: false).fetchDeliveryZones();
+      Provider.of<PaymentMethodProvider>(context, listen: false).fetchPaymentMethods();
       final customer = Provider.of<CustomerAuthProvider>(context, listen: false).currentCustomer;
       if (customer != null && _addressController.text.isEmpty) {
         _addressController.text = customer.address;
@@ -96,6 +100,7 @@ class _CartScreenState extends State<CartScreen> {
       deliveryAddress: _addressController.text.trim(),
       note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
       additionalPhone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+      paymentMethod: _selectedPaymentMethod,
     );
 
     if (!mounted) return;
@@ -311,6 +316,95 @@ class _CartScreenState extends State<CartScreen> {
                     hintText: 'مثال: بدون بصل، صوص زيادة، توصيل سريع...',
                     prefixIcon: Icons.edit_note_outlined,
                   ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'طريقة ووسيلة الدفع 💳',
+                    style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer<PaymentMethodProvider>(
+                    builder: (ctx, pmProvider, _) {
+                      final activeMethods = pmProvider.activePaymentMethods;
+
+                      if (pmProvider.isLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (activeMethods.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withAlpha(30),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.amber.shade700),
+                          ),
+                          child: Text(
+                            'طريقة الدفع الافتراضية: الدفع نقداً عند الاستلام 💵',
+                            style: AppFonts.cairoFont(fontSize: 13, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      }
+
+                      // Auto-select first active method if null
+                      if (_selectedPaymentMethod == null || !activeMethods.any((m) => m.id == _selectedPaymentMethod!.id)) {
+                        _selectedPaymentMethod = activeMethods.first;
+                      }
+
+                      return Column(
+                        children: activeMethods.map((method) {
+                          final isSelected = _selectedPaymentMethod?.id == method.id;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.primary.withAlpha(15) : (isDark ? AppColors.darkSurface : Colors.grey.shade50),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected ? AppColors.primary : (isDark ? AppColors.darkBorder : Colors.grey.shade300),
+                                width: isSelected ? 1.8 : 1,
+                              ),
+                            ),
+                            child: RadioListTile<String>(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                              value: method.id,
+                              groupValue: _selectedPaymentMethod?.id,
+                              activeColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedPaymentMethod = method;
+                                });
+                              },
+                              title: Text(
+                                method.name,
+                                style: AppFonts.cairoFont(fontSize: 13.5, fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (method.accountNumber.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'رقم الحساب/المحفظة للتحويل: ${method.accountNumber}',
+                                      style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                    ),
+                                  ],
+                                  if (method.description.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      method.description,
+                                      style: AppFonts.cairoFont(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -490,6 +584,7 @@ class _CartScreenState extends State<CartScreen> {
                   style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
+                _buildConfirmDetailRow(context, 'طريقة الدفع:', _selectedPaymentMethod?.name ?? 'الدفع عند الاستلام 💵'),
                 _buildConfirmDetailRow(context, 'المنطقة:', cartProvider.selectedZone!.zoneName),
                 _buildConfirmDetailRow(context, 'العنوان:', _addressController.text.trim()),
                 if (_phoneController.text.trim().isNotEmpty)

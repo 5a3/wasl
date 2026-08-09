@@ -565,6 +565,24 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payment, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'طريقة الدفع: ${order.paymentMethodName ?? "الدفع عند الاستلام"}',
+                        style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Notes
                 if (order.note != null && order.note!.trim().isNotEmpty) ...[

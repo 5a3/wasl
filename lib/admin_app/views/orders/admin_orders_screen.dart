@@ -822,6 +822,27 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payment, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'طريقة الدفع: ${order.paymentMethodName ?? "الدفع عند الاستلام"}${order.paymentNote != null && order.paymentNote!.isNotEmpty ? " (${order.paymentNote})" : ""}',
+                          style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Notes
                 if (order.note != null && order.note!.trim().isNotEmpty) ...[

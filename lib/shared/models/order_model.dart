@@ -57,6 +57,9 @@ class OrderModel {
   final List<OrderItemModel> items;
   final String? note;
   final String? additionalPhone;
+  final String? paymentMethodId;
+  final String? paymentMethodName;
+  final String? paymentNote;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -76,6 +79,9 @@ class OrderModel {
     required this.items,
     this.note,
     this.additionalPhone,
+    this.paymentMethodId,
+    this.paymentMethodName = 'الدفع عند الاستلام',
+    this.paymentNote,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -114,6 +120,9 @@ class OrderModel {
       'items': items.map((x) => x.toMap()).toList(),
       'note': note,
       'additionalPhone': additionalPhone,
+      'paymentMethodId': paymentMethodId,
+      'paymentMethodName': paymentMethodName,
+      'paymentNote': paymentNote,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -139,6 +148,9 @@ class OrderModel {
           [],
       note: map['note'],
       additionalPhone: map['additionalPhone'],
+      paymentMethodId: map['paymentMethodId'],
+      paymentMethodName: map['paymentMethodName'] ?? 'الدفع عند الاستلام',
+      paymentNote: map['paymentNote'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );

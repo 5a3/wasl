@@ -125,6 +125,12 @@ class OrderReceiptDialog extends StatelessWidget {
                     pw.SizedBox(height: 2),
                     pw.Text(cleanPdfText('ملاحظات: ${order.note}'), style: const pw.TextStyle(fontSize: 8)),
                   ],
+                  pw.SizedBox(height: 2),
+                  pw.Text(cleanPdfText('طريقة الدفع: ${order.paymentMethodName ?? "الدفع عند الاستلام"}'), style: const pw.TextStyle(fontSize: 8)),
+                  if (order.paymentNote != null && order.paymentNote!.isNotEmpty) ...[
+                    pw.SizedBox(height: 1),
+                    pw.Text(cleanPdfText('تفاصيل الدفع: ${order.paymentNote}'), style: const pw.TextStyle(fontSize: 7)),
+                  ],
                   pw.SizedBox(height: 4),
                   pw.Divider(thickness: 0.5),
                   pw.SizedBox(height: 4),
@@ -279,7 +285,7 @@ class OrderReceiptDialog extends StatelessWidget {
 
       final cleanPhone = order.customerPhone.replaceAll(RegExp(r'[^0-9]'), '');
       final fullPhone = cleanPhone.startsWith('967') ? cleanPhone : '967$cleanPhone';
-      final shareText = 'سند فاتورة طلب رقم #${order.orderNumber}\nالعميل: ${order.customerName}\nالهاتف: ${order.customerPhone}\nالإجمالي: ${Formatters.formatCurrency(order.totalAmount)}\nشكراً لتعاملك معنا ✨';
+      final shareText = 'سند فاتورة طلب رقم #${order.orderNumber}\nالعميل: ${order.customerName}\nالهاتف: ${order.customerPhone}\nطريقة الدفع: ${order.paymentMethodName ?? "الدفع عند الاستلام"}\nالإجمالي: ${Formatters.formatCurrency(order.totalAmount)}\nشكراً لتعاملك معنا ✨';
 
       // 1. Share PNG image file via Share sheet (allowing selecting WhatsApp)
       // ignore: deprecated_member_use

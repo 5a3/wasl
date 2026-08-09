@@ -22,6 +22,7 @@ import 'admin_app/providers/category_provider.dart';
 import 'admin_app/providers/delivery_zone_provider.dart';
 import 'admin_app/providers/notification_provider.dart';
 import 'admin_app/providers/order_management_provider.dart';
+import 'admin_app/providers/payment_method_provider.dart';
 import 'admin_app/providers/product_provider.dart';
 import 'admin_app/providers/ad_provider.dart';
 import 'admin_app/views/auth/admin_login_screen.dart';
@@ -127,6 +128,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentMethodProvider()),
         ChangeNotifierProvider(create: (_) => ComplaintProvider()),
         ChangeNotifierProxyProvider2<CustomerAuthProvider, CategoryProvider, CartProvider>(
           create: (_) => CartProvider(),
