@@ -280,11 +280,42 @@ class OrderManagementProvider extends ChangeNotifier {
       final orderRef = _firestore.collection(FirebaseConstants.collectionOrders).doc(orderId);
       final now = DateTime.now();
 
-      // Find the active order model locally before the database update to avoid race conditions
-      final activeIdx = _activeOrders.indexWhere((o) => o.id == orderId);
+      // Find the target order model locally or fetch it if missing to dispatch FCM notification reliably
       OrderModel? localActiveOrder;
+      final activeIdx = _activeOrders.indexWhere((o) => o.id == orderId);
       if (activeIdx != -1) {
         localActiveOrder = _activeOrders[activeIdx];
+      } else {
+        final compIdx = _completedOrders.indexWhere((o) => o.id == orderId);
+        if (compIdx != -1) {
+          localActiveOrder = _completedOrders[compIdx];
+        } else {
+          final searchIdx = _searchResults.indexWhere((o) => o.id == orderId);
+          if (searchIdx != -1) {
+            localActiveOrder = _searchResults[searchIdx];
+          }
+        }
+      }
+
+      if (localActiveOrder == null) {
+        try {
+          final doc = await orderRef.get();
+          if (doc.exists && doc.data() != null) {
+            localActiveOrder = OrderModel.fromMap(doc.data()!, doc.id);
+          }
+        } catch (_) {}
+      }
+
+      // Dispatch Push Notification IMMEDIATELY in parallel with database update (High priority, guaranteed delivery)
+      if (localActiveOrder != null) {
+        FcmService.sendCustomerOrderStatusNotification(
+          orderNumber: localActiveOrder.orderNumber,
+          status: newStatus,
+          customerId: localActiveOrder.customerId,
+        ).catchError((e) {
+          debugPrint('Error sending customer order status push: $e');
+          return false;
+        });
       }
 
       await orderRef.update({
@@ -321,33 +352,8 @@ class OrderManagementProvider extends ChangeNotifier {
       }
 
       // If status changed to Delivered, update daily aggregated report
-      if (newStatus == AppConstants.statusDelivered) {
-        final orderDoc = await orderRef.get();
-        if (orderDoc.exists && orderDoc.data() != null) {
-          final order = OrderModel.fromMap(orderDoc.data()!, orderDoc.id);
-          await _updateDailyReport(order);
-        }
-      }
-
-      // Trigger Push Notification exclusively to the specific Customer who placed the order (No Firestore doc creation)
-      try {
-        final orderDoc = await orderRef.get();
-        if (orderDoc.exists && orderDoc.data() != null) {
-          final order = OrderModel.fromMap(orderDoc.data()!, orderDoc.id);
-          final targetCustomerId = order.customerId;
-          final orderNumber = order.orderNumber;
-
-          FcmService.sendCustomerOrderStatusNotification(
-            orderNumber: orderNumber,
-            status: newStatus,
-            customerId: targetCustomerId,
-          ).catchError((e) {
-            debugPrint('Error sending customer order status push: $e');
-            return false;
-          });
-        }
-      } catch (e) {
-        debugPrint('Error triggering customer order status push: $e');
+      if (newStatus == AppConstants.statusDelivered && localActiveOrder != null) {
+        await _updateDailyReport(localActiveOrder);
       }
 
       notifyListeners();

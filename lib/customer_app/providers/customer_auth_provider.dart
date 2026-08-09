@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/fcm_service.dart';
+import '../../core/widgets/custom_dialog.dart';
+import '../../main.dart';
 import '../../shared/models/user_model.dart';
+import '../views/auth/customer_login_screen.dart';
 
 /// Provider for Customer Registration & Authentication
 class CustomerAuthProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  StreamSubscription<DocumentSnapshot>? _customerBanSubscription;
 
   UserModel? _currentCustomer;
   bool _isLoading = false;
@@ -56,12 +61,92 @@ class CustomerAuthProvider extends ChangeNotifier {
               .doc(customerId)
               .get(const GetOptions(source: Source.serverAndCache))
               .timeout(const Duration(seconds: 3));
-          if (doc.exists && doc.data() != null) {
-            _currentCustomer = UserModel.fromMap(doc.data()!, doc.id);
+
+          if (!doc.exists) {
+            await _handleForcedLogout('حسابك لم يعد موجوداً في النظام، يرجى التواصل مع الدعم');
+            return;
+          }
+
+          if (doc.data() != null) {
+            final customer = UserModel.fromMap(doc.data()!, doc.id);
+
+            // If account is blocked, trigger immediate force logout
+            if (customer.isBlocked) {
+              await _handleForcedLogout('تم حظر حسابك من قبل الإدارة، يرجى التواصل مع الدعم الفني');
+              return;
+            }
+
+            _currentCustomer = customer;
             FcmService.subscribeToCustomerPersonalTopic(_currentCustomer!.id);
             notifyListeners();
+
+            // Start real-time Firestore stream listener to catch ban status changes instantly
+            _listenToCustomerBanStatus(_currentCustomer!.id);
           }
-        } catch (_) {}
+        } catch (_) {
+          // If offline or request timed out, start listener anyway so snapshot stream fires when back online
+          if (_currentCustomer != null) {
+            _listenToCustomerBanStatus(_currentCustomer!.id);
+          }
+        }
+      }
+    }
+  }
+
+  /// Real-time Firestore Stream Listener targeting customer document for instant ban detection
+  void _listenToCustomerBanStatus(String customerId) {
+    _customerBanSubscription?.cancel();
+    _customerBanSubscription = _firestore
+        .collection(FirebaseConstants.collectionCustomers)
+        .doc(customerId)
+        .snapshots()
+        .listen(
+      (doc) async {
+        if (!doc.exists) {
+          await _handleForcedLogout('تم حذف حسابك من قبل الإدارة، يرجى التواصل مع الدعم الفني');
+          return;
+        }
+
+        final data = doc.data();
+        if (data != null) {
+          final isBlocked = data['isBlocked'] == true;
+          if (isBlocked) {
+            await _handleForcedLogout('تم حظر حسابك من قبل الإدارة، يرجى التواصل مع الدعم الفني');
+          } else {
+            _currentCustomer = UserModel.fromMap(data, doc.id);
+            notifyListeners();
+          }
+        }
+      },
+      onError: (e) {
+        debugPrint('Customer ban status stream note: $e');
+      },
+    );
+  }
+
+  /// Handles automatic forced logout, clearing session, unsubscribing notifications & redirecting to Login screen
+  Future<void> _handleForcedLogout(String reasonMessage) async {
+    _errorMessage = reasonMessage;
+    _customerBanSubscription?.cancel();
+    _customerBanSubscription = null;
+
+    if (_currentCustomer != null) {
+      await FcmService.unsubscribeFromCustomerPersonalTopic(_currentCustomer!.id);
+    }
+    _currentCustomer = null;
+    await StorageService.clearCustomerSession();
+    notifyListeners();
+
+    // Safely redirect to Customer Login screen and clear all routes
+    final navState = navigatorKey.currentState;
+    if (navState != null && navState.mounted) {
+      navState.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const CustomerLoginScreen()),
+        (route) => false,
+      );
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        CustomDialog.showErrorSnackBar(ctx, reasonMessage);
       }
     }
   }
@@ -193,6 +278,9 @@ class CustomerAuthProvider extends ChangeNotifier {
 
       // Subscribe device to customer personal FCM topic
       FcmService.subscribeToCustomerPersonalTopic(customer.id);
+
+      // Start real-time Firestore stream listener to catch ban status changes instantly
+      _listenToCustomerBanStatus(customer.id);
 
       _isLoading = false;
       notifyListeners();
@@ -336,11 +424,19 @@ class CustomerAuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _customerBanSubscription?.cancel();
+    _customerBanSubscription = null;
     if (_currentCustomer != null) {
       await FcmService.unsubscribeFromCustomerPersonalTopic(_currentCustomer!.id);
     }
     _currentCustomer = null;
     await StorageService.clearCustomerSession();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _customerBanSubscription?.cancel();
+    super.dispose();
   }
 }

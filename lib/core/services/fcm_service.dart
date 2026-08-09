@@ -333,6 +333,18 @@ class FcmService {
                   'channel_id': _channel.id,
                   'icon': 'ic_launcher',
                   'sound': 'default',
+                  'notification_priority': 'PRIORITY_MAX',
+                },
+              },
+              'apns': {
+                'headers': {
+                  'apns-priority': '10',
+                },
+                'payload': {
+                  'aps': {
+                    'sound': 'default',
+                    'content-available': 1,
+                  },
                 },
               },
               'data': {
@@ -342,7 +354,7 @@ class FcmService {
               },
             },
           }),
-        );
+        ).timeout(const Duration(seconds: 10));
 
         debugPrint('FCM V1 Push response for [$topic]: ${response.statusCode} ${response.body}');
         authClient.close();
@@ -360,6 +372,8 @@ class FcmService {
         body: jsonEncode({
           'to': '/topics/$topic',
           'priority': 'high',
+          'content_available': true,
+          'direct_boot_ok': true,
           'notification': {
             'title': title,
             'body': body,
@@ -367,6 +381,7 @@ class FcmService {
             'icon': 'ic_launcher',
             'android_channel_id': _channel.id,
             'channel_id': _channel.id,
+            'priority': 'high',
             'badge': '1',
           },
           'data': {
@@ -375,7 +390,7 @@ class FcmService {
             'body': body,
           },
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       debugPrint('FCM HTTP Push response for [$topic]: ${response.statusCode} ${response.body}');
       return response.statusCode == 200;

@@ -75,6 +75,13 @@ class CustomerOrderProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (customer.isBlocked) {
+      _errorMessage = 'عذراً، حسابك محظور من قبل الإدارة ولا يمكنك إرسال طلبات جديدة.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionOrders).doc();
       // Generate a highly unique 8-digit order number combining microsecond timestamp and random values to guarantee 100% uniqueness
