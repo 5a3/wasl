@@ -13,7 +13,7 @@ import '../../../core/widgets/custom_textfield.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../auth/customer_login_screen.dart';
 
-/// Customer Profile Screen (Only Address and Password are Editable with Pencil Icons)
+/// Institutional & Formal Customer Profile Screen
 class ProfileScreen extends StatelessWidget {
   final bool isStandalone;
   const ProfileScreen({super.key, this.isStandalone = false});
@@ -45,257 +45,483 @@ class ProfileScreen extends StatelessWidget {
     final customer = authProvider.currentCustomer;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final customerName =
+        customer?.fullName.isNotEmpty == true ? customer!.fullName : 'عميل وصل لي';
+    final customerInitial =
+        customerName.isNotEmpty ? customerName[0].toUpperCase() : 'ع';
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: isStandalone
           ? AppBar(
               title: Text(
                 'الملف الشخصي والحساب',
-                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
+                style: AppFonts.cairoFont(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
+              centerTitle: true,
+              elevation: 0,
               backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-              foregroundColor: isDark ? Colors.white : Colors.black87,
-              elevation: 0.5,
+              foregroundColor: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  height: 1,
+                ),
+              ),
             )
           : null,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-            // Customer Avatar & Header Name
-            Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 46,
-                    backgroundColor: AppColors.primary.withAlpha(30),
-                    child: Text(
-                      customer?.fullName.isNotEmpty == true ? customer!.fullName[0].toUpperCase() : 'ع',
-                      style: AppFonts.cairoFont(fontSize: 34, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check, size: 14, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              customer?.fullName.isNotEmpty == true ? customer!.fullName : 'عميل وصل لي',
-              style: AppFonts.cairoFont(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '@${customer?.username ?? "user"}',
-              style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade600),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Comprehensive Account Information Card
+            // Official Account Header Card (بطاقة الحساب المعتمد)
             Container(
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade200),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(isDark ? 15 : 5),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  // 1. Account ID (Read Only + Copy)
-                  ListTile(
-                    leading: const Icon(Icons.fingerprint, color: AppColors.primary),
-                    title: Text('رقم الحساب / المعرف', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.id ?? 'غير متوفر',
-                      style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                  // Profile Avatar Initial Container
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        width: 2,
+                      ),
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 18, color: AppColors.primary),
-                      tooltip: 'نسخ رقم الحساب',
-                      onPressed: () {
-                        if (customer?.id != null) {
-                          Clipboard.setData(ClipboardData(text: customer!.id));
-                          CustomDialog.showSuccessSnackBar(context, 'تم نسخ رقم الحساب بنجاح');
-                        }
-                      },
+                    child: Center(
+                      child: Text(
+                        customerInitial,
+                        style: AppFonts.cairoFont(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
-                  const Divider(height: 1),
+                  const SizedBox(width: 16),
 
-                  // 2. Account Status (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.verified_user_outlined, color: Colors.green),
-                    title: Text('حالة الحساب', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Row(
+                  // Name & Account Status Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade700.withAlpha(20),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade700.withAlpha(60)),
+                        Text(
+                          customerName,
+                          style: AppFonts.cairoFont(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.lightTextPrimary,
                           ),
-                          child: Text(
-                            customer?.isBlocked == true ? 'محظور 🔴' : 'نشط ومعتمد 🟢',
-                            style: AppFonts.cairoFont(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '@${customer?.username ?? "user"}',
+                          style: AppFonts.cairoFont(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+
+                        // Account Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: customer?.isBlocked == true
+                                ? AppColors.danger.withValues(alpha: 0.12)
+                                : Colors.green.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: customer?.isBlocked == true
+                                  ? AppColors.danger.withValues(alpha: 0.3)
+                                  : Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                customer?.isBlocked == true
+                                    ? Icons.error_outline_rounded
+                                    : Icons.verified_user_rounded,
+                                size: 12,
+                                color: customer?.isBlocked == true
+                                    ? AppColors.danger
+                                    : Colors.green.shade700,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                customer?.isBlocked == true
+                                    ? 'حساب محظور'
+                                    : 'حساب معتمد ونشط',
+                                style: AppFonts.cairoFont(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: customer?.isBlocked == true
+                                      ? AppColors.danger
+                                      : Colors.green.shade800,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Divider(height: 1),
 
-                  // 3. Full Name (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.badge_outlined, color: AppColors.primary),
-                    title: Text('الاسم الكامل', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.fullName.isNotEmpty == true ? customer!.fullName : 'غير مدخل',
-                      style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+                  // Copy Account ID Button
+                  IconButton(
+                    icon: Icon(
+                      Icons.content_copy_rounded,
+                      size: 20,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.lightTextSecondary,
                     ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 4. Registered Address (EDITABLE via Pencil Icon ✏️)
-                  ListTile(
-                    leading: const Icon(Icons.location_on_outlined, color: AppColors.primary),
-                    title: Text('العنوان المسجل', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.address.isNotEmpty == true ? customer!.address : 'غير مدخل',
-                      style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    trailing: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                      ),
-                      tooltip: 'تعديل العنوان',
-                      onPressed: () => _openEditAddressDialog(context, customer?.address ?? ''),
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 5. Password / Pin Code (EDITABLE via Pencil Icon ✏️ + requires Old Password)
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline, color: AppColors.primary),
-                    title: Text('الرمز السري / كلمة المرور', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      '••••••••',
-                      style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    trailing: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                      ),
-                      tooltip: 'تغيير الرمز السري',
-                      onPressed: () => _openEditPasswordDialog(context),
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 6. Phone Number (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
-                    title: Text('رقم الهاتف', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.phone.isNotEmpty == true ? customer!.phone : 'غير مدخل',
-                      style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 7. Username (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.account_circle_outlined, color: AppColors.primary),
-                    title: Text('اسم المستخدم', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.username.isNotEmpty == true ? '@${customer!.username}' : 'غير مدخل',
-                      style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 8. Email Address (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.email_outlined, color: AppColors.primary),
-                    title: Text('البريد الإلكتروني', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer?.email.isNotEmpty == true ? customer!.email : 'غير مدخل',
-                      style: AppFonts.cairoFont(fontSize: 13),
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 9. Join Date (Read Only)
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today_outlined, color: AppColors.primary),
-                    title: Text('تاريخ الانضمام', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade600)),
-                    subtitle: Text(
-                      customer != null ? Formatters.formatDateTime(customer.createdAt) : 'غير متوفر',
-                      style: AppFonts.cairoFont(fontSize: 12),
-                    ),
+                    tooltip: 'نسخ معرف الحساب',
+                    onPressed: () {
+                      if (customer?.id != null) {
+                        Clipboard.setData(ClipboardData(text: customer!.id));
+                        CustomDialog.showSuccessSnackBar(
+                          context,
+                          'تم نسخ معرف الحساب بنجاح ✅',
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // Settings & Preferences Card
+            // Section 1: Basic Account Information
+            _buildSectionLabel(context, 'بيانات الحساب الأساسية', isDark),
+            const SizedBox(height: 8),
+
             Container(
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkSurface : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
               ),
-              child: SwitchListTile(
-                secondary: const Icon(Icons.dark_mode_outlined, color: AppColors.primary),
-                title: Text('الوضع الليلي (Dark Mode)', style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600)),
-                value: themeProvider.isDarkMode,
-                onChanged: (val) => themeProvider.toggleTheme(val),
+              child: Column(
+                children: [
+                  _buildCorporateInfoTile(
+                    context,
+                    title: 'الاسم الكامل',
+                    value: customerName,
+                    icon: Icons.person_outline_rounded,
+                    isDark: isDark,
+                  ),
+                  _buildDivider(isDark),
+                  _buildCorporateInfoTile(
+                    context,
+                    title: 'اسم المستخدم',
+                    value: customer?.username.isNotEmpty == true
+                        ? '@${customer!.username}'
+                        : 'غير مدخل',
+                    icon: Icons.alternate_email_rounded,
+                    isDark: isDark,
+                  ),
+                  _buildDivider(isDark),
+                  _buildCorporateInfoTile(
+                    context,
+                    title: 'رقم الهاتف المسجل',
+                    value: customer?.phone.isNotEmpty == true
+                        ? customer!.phone
+                        : 'غير مدخل',
+                    icon: Icons.phone_android_rounded,
+                    isDark: isDark,
+                  ),
+                  _buildDivider(isDark),
+                  _buildCorporateInfoTile(
+                    context,
+                    title: 'البريد الإلكتروني',
+                    value: customer?.email.isNotEmpty == true
+                        ? customer!.email
+                        : 'غير مدخل',
+                    icon: Icons.email_outlined,
+                    isDark: isDark,
+                  ),
+                  _buildDivider(isDark),
+                  _buildCorporateInfoTile(
+                    context,
+                    title: 'تاريخ إنشاء الحساب',
+                    value: customer != null
+                        ? Formatters.formatDateTime(customer.createdAt)
+                        : 'غير متوفر',
+                    icon: Icons.calendar_today_rounded,
+                    isDark: isDark,
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // Logout Button
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            // Section 2: Delivery Location & Address (Editable)
+            _buildSectionLabel(context, 'عنوان التوصيل المعتمد', isDark),
+            const SizedBox(height: 8),
+
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
               ),
-              icon: const Icon(Icons.logout, color: Colors.white),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+                title: Text(
+                  'العنوان الحالي المسجل',
+                  style: AppFonts.cairoFont(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  customer?.address.isNotEmpty == true
+                      ? customer!.address
+                      : 'لم يتم إدخال العنوان السكني بعد',
+                  style: AppFonts.cairoFont(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                ),
+                trailing: InkWell(
+                  onTap: () => _openEditAddressDialog(
+                    context,
+                    customer?.address ?? '',
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'تعديل',
+                          style: AppFonts.cairoFont(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Section 3: Security & Preferences
+            _buildSectionLabel(context, 'الأمان وإعدادات المظهر', isDark),
+            const SizedBox(height: 8),
+
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Change Password Tile
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    title: Text(
+                      'الرمز السري / كلمة المرور',
+                      style: AppFonts.cairoFont(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '••••••••',
+                      style: AppFonts.cairoFont(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                    trailing: InkWell(
+                      onTap: () => _openEditPasswordDialog(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.edit_outlined,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'تغيير',
+                              style: AppFonts.cairoFont(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildDivider(isDark),
+
+                  // Dark Mode Switch Tile
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 0),
+                    secondary: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        themeProvider.isDarkMode
+                            ? Icons.light_mode_rounded
+                            : Icons.dark_mode_rounded,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    title: Text(
+                      'الوضع الداكن (Dark Mode)',
+                      style: AppFonts.cairoFont(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                    value: themeProvider.isDarkMode,
+                    onChanged: (val) => themeProvider.toggleTheme(val),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Logout Action Button
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                side: const BorderSide(color: AppColors.danger, width: 1.2),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 20),
               label: Text(
                 'تسجيل الخروج من الحساب',
-                style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold),
+                style: AppFonts.cairoFont(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               onPressed: () async {
                 final confirm = await CustomDialog.showConfirmDialog(
@@ -309,7 +535,9 @@ class ProfileScreen extends StatelessWidget {
                 if (confirm == true) {
                   await authProvider.logout();
                   navigatorKey.currentState?.pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const CustomerLoginScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerLoginScreen(),
+                    ),
                     (route) => false,
                   );
                 }
@@ -318,6 +546,71 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 80),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(BuildContext context, String label, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        label,
+        style: AppFonts.cairoFont(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(bool isDark) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+    );
+  }
+
+  Widget _buildCorporateInfoTile(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required bool isDark,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: AppColors.primary,
+        ),
+      ),
+      title: Text(
+        title,
+        style: AppFonts.cairoFont(
+          fontSize: 12,
+          color: isDark
+              ? AppColors.darkTextSecondary
+              : AppColors.lightTextSecondary,
+        ),
+      ),
+      subtitle: Text(
+        value,
+        style: AppFonts.cairoFont(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: isDark
+              ? AppColors.darkTextPrimary
+              : AppColors.lightTextPrimary,
         ),
       ),
     );

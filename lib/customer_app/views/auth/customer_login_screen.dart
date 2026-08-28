@@ -329,141 +329,256 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
         }
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('تسجيل الدخول للعملاء'),
-        actions: [
-          IconButton(
-            tooltip: 'تغيير المظهر (فاتح / داكن)',
-            icon: Icon(
-              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-            ),
-            onPressed: () {
-              themeProvider.toggleTheme(!themeProvider.isDarkMode);
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
+        backgroundColor: themeProvider.isDarkMode
+            ? AppColors.darkBackground
+            : AppColors.lightBackground,
+        body: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
-              Center(
-                child: SvgPicture.asset(
-                  'assets/images/logo.svg',
-                  width: 120,
-                  height: 120,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'مرحباً بك مجدداً!',
-                textAlign: TextAlign.center,
-                style: AppFonts.cairoFont(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'ادخل اسم المستخدم أو رقم الهاتف وكلمة المرور',
-                textAlign: TextAlign.center,
-                style: AppFonts.cairoFont(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 28),
-              CustomTextField(
-                controller: _identifierController,
-                labelText: 'اسم المستخدم أو رقم الهاتف',
-                hintText: 'ادخل اسم المستخدم أو رقم هاتفك اليمني',
-                prefixIcon: Icons.person_outline,
-                validator:
-                    (val) => Validators.validateRequired(
-                      val,
-                      'اسم المستخدم أو رقم الهاتف',
-                    ),
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _passwordController,
-                labelText: 'كلمة المرور',
-                hintText: 'ادخل كلمة المرور (6+ أحرف)',
-                prefixIcon: Icons.lock_outline,
-                obscureText: _obscurePassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
-                validator: Validators.validatePassword,
-              ),
-              const SizedBox(height: 4),
-
-              // Forgot Password Button
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: _showForgotPasswordDialog,
-                  child: Text(
-                    'نسيت كلمة المرور؟ 🔑',
-                    style: AppFonts.cairoFont(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-              CustomButton(
-                text: 'تسجيل الدخول',
-                isLoading: authProvider.isLoading,
-                onPressed: _submitLogin,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'ليس لديك حساب بعد؟',
-                    style: AppFonts.cairoFont(color: Colors.grey.shade700),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const CustomerRegisterScreen(),
+              // Top Bar containing only theme toggle button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    // Theme Toggle Button
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          themeProvider.toggleTheme(!themeProvider.isDarkMode);
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: themeProvider.isDarkMode
+                                ? AppColors.darkSurfaceLight
+                                : Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: themeProvider.isDarkMode
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                themeProvider.isDarkMode
+                                    ? Icons.light_mode_rounded
+                                    : Icons.dark_mode_rounded,
+                                size: 18,
+                                color: themeProvider.isDarkMode
+                                    ? AppColors.accent
+                                    : AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                themeProvider.isDarkMode ? 'فاتح' : 'داكن',
+                                style: AppFonts.cairoFont(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: themeProvider.isDarkMode
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.lightTextPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                    child: Text(
-                      'إنشاء حساب جديد',
-                      style: AppFonts.cairoFont(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+              // Form Scrollable Container
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  physics: const BouncingScrollPhysics(),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 10),
+
+                        // Original Clean Logo (No Circle Container)
+                        Center(
+                          child: SvgPicture.asset(
+                            'assets/images/logo.svg',
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Official Title & Subtitle
+                        Text(
+                          'تسجيل الدخول',
+                          textAlign: TextAlign.center,
+                          style: AppFonts.cairoFont(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: themeProvider.isDarkMode
+                                ? AppColors.darkTextPrimary
+                                : AppColors.lightTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'ادخل اسم المستخدم أو رقم الهاتف وكلمة المرور',
+                          textAlign: TextAlign.center,
+                          style: AppFonts.cairoFont(
+                            fontSize: 13,
+                            color: themeProvider.isDarkMode
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Card Input Fields Container
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: themeProvider.isDarkMode
+                                ? AppColors.darkSurface
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: themeProvider.isDarkMode ? 0.2 : 0.05,
+                                ),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: themeProvider.isDarkMode
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              CustomTextField(
+                                controller: _identifierController,
+                                labelText: 'اسم المستخدم أو رقم الهاتف',
+                                hintText: 'ادخل اسم المستخدم أو رقم الهاتف',
+                                prefixIcon: Icons.person_outline_rounded,
+                                validator: (val) => Validators.validateRequired(
+                                  val,
+                                  'اسم المستخدم أو رقم الهاتف',
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              CustomTextField(
+                                controller: _passwordController,
+                                labelText: 'كلمة المرور',
+                                hintText: 'ادخل كلمة المرور (6+ أحرف)',
+                                prefixIcon: Icons.lock_outline_rounded,
+                                obscureText: _obscurePassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                validator: Validators.validatePassword,
+                              ),
+                              const SizedBox(height: 6),
+
+                              // Forgot Password Button
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                  onPressed: _showForgotPasswordDialog,
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    'نسيت كلمة المرور؟ 🔑',
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 13,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Submit Login Button
+                              CustomButton(
+                                text: 'تسجيل الدخول',
+                                isLoading: authProvider.isLoading,
+                                onPressed: _submitLogin,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Register Navigation Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'ليس لديك حساب بعد؟',
+                              style: AppFonts.cairoFont(
+                                color: themeProvider.isDarkMode
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const CustomerRegisterScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'إنشاء حساب جديد',
+                                style: AppFonts.cairoFont(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
         ),
       ),
-    ),
   );
 }
 }

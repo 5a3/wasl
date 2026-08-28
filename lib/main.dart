@@ -35,6 +35,8 @@ import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/providers/complaint_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
+import 'customer_app/views/home/customer_home_screen.dart';
+import 'customer_app/views/onboarding/onboarding_screen.dart';
 import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
 import 'shared/providers/store_provider.dart';
@@ -194,10 +196,11 @@ class WaslAppMain extends StatelessWidget {
       builder: (context, child) {
         return OfflineBannerWrapper(child: child ?? const SizedBox.shrink());
       },
-      home:
-          StorageService.isCustomerLoggedIn()
-              ? const AppLauncherChooserScreen()
-              : const AppLauncherChooserScreen(),
+      home: !StorageService.isOnboardingCompleted()
+          ? const OnboardingScreen()
+          : (StorageService.isCustomerLoggedIn()
+              ? const CustomerHomeScreen()
+              : const CustomerLoginScreen()),
     );
   }
 }

@@ -9,6 +9,7 @@ class AppConstants {
 
   // Shared Preferences Keys
   static const String keyThemeMode = 'app_theme_mode';
+  static const String keyIsOnboardingCompleted = 'is_onboarding_completed';
   static const String keyIsAdminLoggedIn = 'is_admin_logged_in';
   static const String keyAdminId = 'admin_id';
   static const String keyAdminUsername = 'admin_username';

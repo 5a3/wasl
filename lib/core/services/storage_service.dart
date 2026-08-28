@@ -9,6 +9,16 @@ class StorageService {
     _prefs ??= await SharedPreferences.getInstance();
   }
 
+  // Onboarding Session State
+  static bool isOnboardingCompleted() {
+    return _prefs?.getBool(AppConstants.keyIsOnboardingCompleted) ?? false;
+  }
+
+  static Future<void> setOnboardingCompleted(bool completed) async {
+    await init();
+    await _prefs?.setBool(AppConstants.keyIsOnboardingCompleted, completed);
+  }
+
   // Admin Session
   static Future<void> saveAdminSession({
     required String adminId,
