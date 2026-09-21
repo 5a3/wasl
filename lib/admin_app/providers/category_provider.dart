@@ -66,6 +66,11 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
+  List<CategoryModel> getCategoriesByStore(String? storeId) {
+    if (storeId == null || storeId.isEmpty) return categories;
+    return categories.where((c) => c.storeId == storeId || c.storeId == null).toList();
+  }
+
   Future<bool> addCategory({
     required String name,
     String? parentId,
@@ -73,6 +78,7 @@ class CategoryProvider extends ChangeNotifier {
     bool hasDiscount = false,
     String discountType = 'percentage',
     double discountValue = 0.0,
+    String? storeId,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionCategories).doc();
@@ -85,6 +91,7 @@ class CategoryProvider extends ChangeNotifier {
         hasDiscount: hasDiscount,
         discountType: discountType,
         discountValue: discountValue,
+        storeId: storeId,
       );
 
       await docRef.set(newCat.toMap());
@@ -106,6 +113,7 @@ class CategoryProvider extends ChangeNotifier {
     bool hasDiscount = false,
     String discountType = 'percentage',
     double discountValue = 0.0,
+    String? storeId,
   }) async {
     try {
       final index = _categories.indexWhere((c) => c.id == id);
@@ -120,6 +128,7 @@ class CategoryProvider extends ChangeNotifier {
           hasDiscount: hasDiscount,
           discountType: discountType,
           discountValue: discountValue,
+          storeId: storeId ?? _categories[index].storeId,
         );
 
         await _firestore

@@ -13,15 +13,24 @@ class CartProvider extends ChangeNotifier {
   DeliveryZoneModel? _selectedZone;
   String? _currentCustomerId;
   CategoryProvider? _categoryProvider;
+  String? _currentStoreId;
+  String? _currentStoreName;
 
   Map<String, OrderItemModel> get items => _items;
   List<OrderItemModel> get itemList => _items.values.toList();
   int get itemCount => _items.length;
   DeliveryZoneModel? get selectedZone => _selectedZone;
   String? get currentCustomerId => _currentCustomerId;
+  String? get currentStoreId => _currentStoreId;
+  String? get currentStoreName => _currentStoreName;
 
   void setCategoryProvider(CategoryProvider? categoryProvider) {
     _categoryProvider = categoryProvider;
+  }
+
+  bool isFromDifferentStore(ProductModel product) {
+    if (_items.isEmpty || _currentStoreId == null || product.storeId == null) return false;
+    return _currentStoreId != product.storeId;
   }
 
   double get subtotal {
@@ -40,6 +49,8 @@ class CartProvider extends ChangeNotifier {
     _currentCustomerId = customerId;
     _items.clear();
     _selectedZone = null;
+    _currentStoreId = null;
+    _currentStoreName = null;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -54,6 +65,9 @@ class CartProvider extends ChangeNotifier {
           _items[item.productId] = item;
         }
       }
+
+      _currentStoreId = prefs.getString('customer_cart_store_id_$customerId');
+      _currentStoreName = prefs.getString('customer_cart_store_name_$customerId');
     } catch (e) {
       debugPrint('Error loading customer cart: $e');
     }
@@ -72,6 +86,13 @@ class CartProvider extends ChangeNotifier {
       final cartKey = 'customer_cart_$customerId';
       final list = _items.values.map((item) => item.toMap()).toList();
       await prefs.setString(cartKey, jsonEncode(list));
+
+      if (_currentStoreId != null) {
+        await prefs.setString('customer_cart_store_id_$customerId', _currentStoreId!);
+      }
+      if (_currentStoreName != null) {
+        await prefs.setString('customer_cart_store_name_$customerId', _currentStoreName!);
+      }
     } catch (e) {
       debugPrint('Error saving customer cart: $e');
     }
@@ -83,6 +104,13 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addToCart(ProductModel product, {CategoryModel? category}) {
+    if (!product.isAvailable) return;
+
+    if (_items.isEmpty) {
+      _currentStoreId = product.storeId;
+      _currentStoreName = product.storeName;
+    }
+
     final cat = category ?? _categoryProvider?.getCategoryById(product.mainCategoryId);
     final effectivePrice = product.getEffectivePrice(cat);
     if (_items.containsKey(product.id)) {
@@ -121,12 +149,21 @@ class CartProvider extends ChangeNotifier {
     } else {
       _items.remove(productId);
     }
+
+    if (_items.isEmpty) {
+      _currentStoreId = null;
+      _currentStoreName = null;
+    }
     saveCartToStorage();
     notifyListeners();
   }
 
   void removeItem(String productId) {
     _items.remove(productId);
+    if (_items.isEmpty) {
+      _currentStoreId = null;
+      _currentStoreName = null;
+    }
     saveCartToStorage();
     notifyListeners();
   }
@@ -134,6 +171,8 @@ class CartProvider extends ChangeNotifier {
   void clearCart() {
     _items.clear();
     _selectedZone = null;
+    _currentStoreId = null;
+    _currentStoreName = null;
     _clearUserStorage();
     notifyListeners();
   }

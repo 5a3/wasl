@@ -18,6 +18,7 @@ import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
 import '../complaints/admin_complaints_screen.dart';
 import '../payment_methods/admin_payment_methods_screen.dart';
+import '../stores/admin_stores_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
 import '../../../core/constants/admin_permissions.dart';
@@ -291,7 +292,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Divider(height: 10, thickness: 0.5, color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                     const SizedBox(height: 8),
 
-                    // Option 1: Reports & Analytics
+                    // Option 1: Manage Stores & Vendors
+                    _buildDrawerItem(
+                      icon: Icons.storefront_outlined,
+                      title: 'إدارة المطاعم والمتاجر 🏪',
+                      subtitle: 'إضافة وتعديل المطاعم وحالة كل مطعم',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminStoresScreen()),
+                        );
+                      },
+                    ),
+
+                    // Option 2: Reports & Analytics
                     if (admin != null && admin.hasAnyPermission(const [AdminPermissions.reportsViewSummary, AdminPermissions.reportsViewFinancial, AdminPermissions.reportsExportPdf]))
                       _buildDrawerItem(
                         icon: Icons.bar_chart_outlined,
@@ -382,6 +397,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           );
                         },
                       ),
+
+                    // Option 7: Stores Management
+                    _buildDrawerItem(
+                      icon: Icons.storefront_outlined,
+                      title: 'إدارة المطاعم والمتاجر 🏪',
+                      subtitle: 'إضافة وتعديل المطاعم وحالتها',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AdminStoresScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

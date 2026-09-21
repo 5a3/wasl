@@ -9,6 +9,8 @@ class PaymentMethodModel {
   final bool isActive;
   final int orderIndex;
   final DateTime createdAt;
+  final String? storeId;
+  final bool isGlobal;
 
   PaymentMethodModel({
     required this.id,
@@ -18,6 +20,8 @@ class PaymentMethodModel {
     this.isActive = true,
     this.orderIndex = 0,
     required this.createdAt,
+    this.storeId,
+    this.isGlobal = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +32,8 @@ class PaymentMethodModel {
       'isActive': isActive,
       'orderIndex': orderIndex,
       'createdAt': Timestamp.fromDate(createdAt),
+      'storeId': storeId,
+      'isGlobal': isGlobal,
     };
   }
 
@@ -49,6 +55,8 @@ class PaymentMethodModel {
       isActive: map['isActive'] ?? true,
       orderIndex: (map['orderIndex'] as num?)?.toInt() ?? 0,
       createdAt: parsedDate,
+      storeId: map['storeId'],
+      isGlobal: map['isGlobal'] ?? true,
     );
   }
 
@@ -60,6 +68,8 @@ class PaymentMethodModel {
     bool? isActive,
     int? orderIndex,
     DateTime? createdAt,
+    String? storeId,
+    bool? isGlobal,
   }) {
     return PaymentMethodModel(
       id: id ?? this.id,
@@ -69,6 +79,8 @@ class PaymentMethodModel {
       isActive: isActive ?? this.isActive,
       orderIndex: orderIndex ?? this.orderIndex,
       createdAt: createdAt ?? this.createdAt,
+      storeId: storeId ?? this.storeId,
+      isGlobal: isGlobal ?? this.isGlobal,
     );
   }
 }

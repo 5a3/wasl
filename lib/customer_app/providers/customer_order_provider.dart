@@ -74,6 +74,8 @@ class CustomerOrderProvider extends ChangeNotifier {
     String? note,
     String? additionalPhone,
     PaymentMethodModel? paymentMethod,
+    String? storeId,
+    String? storeName,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -117,6 +119,8 @@ class CustomerOrderProvider extends ChangeNotifier {
             : null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        storeId: storeId,
+        storeName: storeName,
       );
 
       await docRef.set(newOrder.toMap());

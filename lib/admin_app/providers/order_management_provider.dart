@@ -26,8 +26,24 @@ class OrderManagementProvider extends ChangeNotifier {
   bool _isSearching = false;
   String _lastSearchQuery = '';
 
-  List<OrderModel> get activeOrders => _activeOrders;
-  List<OrderModel> get completedOrders => _completedOrders;
+  String? _selectedStoreId;
+  String? get selectedStoreId => _selectedStoreId;
+
+  void setSelectedStoreId(String? storeId) {
+    _selectedStoreId = storeId;
+    notifyListeners();
+  }
+
+  List<OrderModel> get activeOrders {
+    if (_selectedStoreId == null || _selectedStoreId!.isEmpty) return _activeOrders;
+    return _activeOrders.where((o) => o.storeId == _selectedStoreId).toList();
+  }
+
+  List<OrderModel> get completedOrders {
+    if (_selectedStoreId == null || _selectedStoreId!.isEmpty) return _completedOrders;
+    return _completedOrders.where((o) => o.storeId == _selectedStoreId).toList();
+  }
+
   bool get isLoadingActive => _isLoadingActive;
   bool get isLoadingCompleted => _isLoadingCompleted;
   bool get hasMoreCompleted => _hasMoreCompleted;

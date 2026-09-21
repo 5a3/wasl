@@ -16,6 +16,8 @@ class ProductModel {
   final String discountType; // 'percentage' or 'fixed'
   final double discountValue;
   final DateTime createdAt;
+  final String? storeId;
+  final String? storeName;
 
   ProductModel({
     required this.id,
@@ -31,7 +33,45 @@ class ProductModel {
     this.discountType = 'percentage',
     this.discountValue = 0.0,
     required this.createdAt,
+    this.storeId,
+    this.storeName,
   });
+
+  ProductModel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? price,
+    String? mainCategoryId,
+    String? subCategoryId,
+    List<String>? images,
+    bool? isAvailable,
+    int? salesCount,
+    bool? hasDiscount,
+    String? discountType,
+    double? discountValue,
+    DateTime? createdAt,
+    String? storeId,
+    String? storeName,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      mainCategoryId: mainCategoryId ?? this.mainCategoryId,
+      subCategoryId: subCategoryId ?? this.subCategoryId,
+      images: images ?? this.images,
+      isAvailable: isAvailable ?? this.isAvailable,
+      salesCount: salesCount ?? this.salesCount,
+      hasDiscount: hasDiscount ?? this.hasDiscount,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      createdAt: createdAt ?? this.createdAt,
+      storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
+    );
+  }
 
   /// Check if an effective discount is active for this product (direct or via category)
   bool hasEffectiveDiscount(CategoryModel? category) {
@@ -102,6 +142,8 @@ class ProductModel {
       'discountType': discountType,
       'discountValue': discountValue,
       'createdAt': Timestamp.fromDate(createdAt),
+      'storeId': storeId,
+      'storeName': storeName,
     };
   }
 
@@ -120,6 +162,8 @@ class ProductModel {
       discountType: map['discountType'] ?? 'percentage',
       discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      storeId: map['storeId'],
+      storeName: map['storeName'],
     );
   }
 }

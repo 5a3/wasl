@@ -9,6 +9,7 @@ class CategoryModel {
   final bool hasDiscount;
   final String discountType; // 'percentage' or 'fixed'
   final double discountValue;
+  final String? storeId;
 
   CategoryModel({
     required this.id,
@@ -20,6 +21,7 @@ class CategoryModel {
     this.hasDiscount = false,
     this.discountType = 'percentage',
     this.discountValue = 0.0,
+    this.storeId,
   });
 
   bool get isMainCategory => parentId == null || parentId!.isEmpty;
@@ -35,6 +37,7 @@ class CategoryModel {
       'hasDiscount': hasDiscount,
       'discountType': discountType,
       'discountValue': discountValue,
+      'storeId': storeId,
     };
   }
 
@@ -49,6 +52,33 @@ class CategoryModel {
       hasDiscount: map['hasDiscount'] ?? false,
       discountType: map['discountType'] ?? 'percentage',
       discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
+      storeId: map['storeId'],
+    );
+  }
+
+  CategoryModel copyWith({
+    String? id,
+    String? name,
+    String? parentId,
+    String? imageUrl,
+    bool? isActive,
+    int? orderIndex,
+    bool? hasDiscount,
+    String? discountType,
+    double? discountValue,
+    String? storeId,
+  }) {
+    return CategoryModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      parentId: parentId ?? this.parentId,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isActive: isActive ?? this.isActive,
+      orderIndex: orderIndex ?? this.orderIndex,
+      hasDiscount: hasDiscount ?? this.hasDiscount,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      storeId: storeId ?? this.storeId,
     );
   }
 }

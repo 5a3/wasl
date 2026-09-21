@@ -7,6 +7,7 @@ import '../../../core/widgets/custom_dialog.dart';
 import '../../../shared/models/payment_method_model.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/payment_method_provider.dart';
+import '../../providers/vendor_store_provider.dart';
 
 class AdminPaymentMethodsScreen extends StatefulWidget {
   const AdminPaymentMethodsScreen({super.key});
@@ -22,8 +23,8 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
     super.initState();
     Future.microtask(() {
       if (mounted) {
-        Provider.of<PaymentMethodProvider>(context, listen: false)
-            .fetchPaymentMethods();
+        Provider.of<PaymentMethodProvider>(context, listen: false).fetchPaymentMethods();
+        Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
       }
     });
   }
@@ -36,6 +37,8 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
     final accountController =
         TextEditingController(text: method?.accountNumber ?? '');
     bool isActive = method?.isActive ?? true;
+    bool isGlobal = method?.isGlobal ?? true;
+    String? selectedStoreId = method?.storeId;
 
     showDialog(
       context: context,
@@ -73,6 +76,51 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
                       prefixIcon: Icon(Icons.payment),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: Text(
+                      'طريقة دفع عامة لجميع المطاعم',
+                      style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      isGlobal ? 'متاحة لجميع المطاعم (مثل الدفع نقداً عند الاستلام)' : 'خاصة بمطعم محدد',
+                      style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey),
+                    ),
+                    value: isGlobal,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) {
+                      setState(() {
+                        isGlobal = val;
+                      });
+                    },
+                  ),
+                  if (!isGlobal) ...[
+                    const SizedBox(height: 10),
+                    Consumer<VendorStoreProvider>(
+                      builder: (context, storeProv, _) {
+                        final stores = storeProv.stores;
+                        return DropdownButtonFormField<String?>(
+                          value: stores.any((s) => s.id == selectedStoreId) ? selectedStoreId : null,
+                          decoration: InputDecoration(
+                            labelText: 'اختيار المطعم المربوطة به طريقة الدفع',
+                            prefixIcon: const Icon(Icons.storefront),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          items: stores.map((s) => DropdownMenuItem<String?>(
+                            value: s.id,
+                            child: Text(s.name),
+                          )).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedStoreId = val;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: accountController,
@@ -147,6 +195,8 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
                       description: descController.text.trim(),
                       accountNumber: accountController.text.trim(),
                       isActive: isActive,
+                      storeId: isGlobal ? null : selectedStoreId,
+                      isGlobal: isGlobal,
                     );
                   } else {
                     ok = await provider.addPaymentMethod(
@@ -154,6 +204,8 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
                       description: descController.text.trim(),
                       accountNumber: accountController.text.trim(),
                       isActive: isActive,
+                      storeId: isGlobal ? null : selectedStoreId,
+                      isGlobal: isGlobal,
                     );
                   }
 

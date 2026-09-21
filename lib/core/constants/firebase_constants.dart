@@ -10,6 +10,7 @@ class FirebaseConstants {
   static const String collectionDeliveryZones = 'delivery_zones';
   static const String collectionOrders = 'orders';
   static const String collectionPaymentMethods = 'payment_methods';
+  static const String collectionStores = 'stores';
   static const String collectionDailyReports = 'daily_reports';
   static const String collectionNotifications = 'notifications';
 

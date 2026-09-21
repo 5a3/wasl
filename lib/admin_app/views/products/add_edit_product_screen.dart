@@ -16,6 +16,7 @@ import '../../../core/constants/admin_permissions.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/vendor_store_provider.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final ProductModel? productToEdit;
@@ -39,6 +40,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool _hasDiscount = false;
   String _discountType = 'percentage';
   bool _isUploading = false;
+  String? _selectedStoreId;
+  String? _selectedStoreName;
 
   final List<dynamic> _pickedImageFiles = []; // File or Uint8List
   List<String> _existingImageUrls = [];
@@ -60,8 +63,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _hasDiscount = widget.productToEdit?.hasDiscount ?? false;
     _discountType = widget.productToEdit?.discountType ?? 'percentage';
     _existingImageUrls = List<String>.from(widget.productToEdit?.images ?? []);
+    _selectedStoreId = widget.productToEdit?.storeId;
+    _selectedStoreName = widget.productToEdit?.storeName;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
       final catProvider = Provider.of<CategoryProvider>(context, listen: false);
       if (isEditing) {
         final mainIndex = catProvider.mainCategories.indexWhere((c) => c.id == widget.productToEdit!.mainCategoryId);
@@ -181,6 +187,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           hasDiscount: _hasDiscount,
           discountType: _discountType,
           discountValue: discountVal,
+          storeId: _selectedStoreId,
+          storeName: _selectedStoreName,
         );
       } else {
         ok = await prodProvider.addProduct(
@@ -194,6 +202,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           hasDiscount: _hasDiscount,
           discountType: _discountType,
           discountValue: discountVal,
+          storeId: _selectedStoreId,
+          storeName: _selectedStoreName,
         );
       }
 
@@ -276,6 +286,38 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 keyboardType: TextInputType.number,
                 prefixIcon: Icons.attach_money_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال السعر' : null,
+              ),
+              const SizedBox(height: 14),
+              Consumer<VendorStoreProvider>(
+                builder: (context, storeProv, child) {
+                  final stores = storeProv.stores;
+                  return DropdownButtonFormField<String?>(
+                    value: stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
+                    decoration: const InputDecoration(
+                      labelText: 'المطعم / المتجر التابع له المنتج *',
+                      prefixIcon: Icon(Icons.storefront_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('غير محدد (عام)'),
+                      ),
+                      ...stores.map(
+                        (s) => DropdownMenuItem<String?>(
+                          value: s.id,
+                          child: Text(s.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      final selected = stores.firstWhere((s) => s.id == val, orElse: () => stores.first);
+                      setState(() {
+                        _selectedStoreId = val;
+                        _selectedStoreName = val != null ? selected.name : null;
+                      });
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<CategoryModel>(

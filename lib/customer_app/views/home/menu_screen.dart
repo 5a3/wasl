@@ -2,21 +2,15 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../admin_app/providers/category_provider.dart';
-import '../../../admin_app/providers/product_provider.dart';
 import '../../../admin_app/providers/ad_provider.dart';
+import '../../../admin_app/providers/vendor_store_provider.dart';
 import '../../../shared/models/ad_model.dart';
-import '../../../shared/models/category_model.dart';
-import '../../../shared/models/product_model.dart';
+import '../../../shared/models/store_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_cached_image.dart';
-import '../../providers/cart_provider.dart';
-import '../../providers/favorite_provider.dart';
-import 'product_details_screen.dart';
+import 'store_menu_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -27,41 +21,17 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  String? _selectedCategoryId;
   String _searchQuery = '';
   int _currentAdPage = 0;
-  bool _isGridView = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadViewPreference();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
-      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
+      Provider.of<AdProvider>(context, listen: false).fetchAds();
     });
-  }
-
-  Future<void> _loadViewPreference() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (mounted) {
-        setState(() {
-          _isGridView = prefs.getBool('menu_is_grid_view') ?? false;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _toggleViewMode(bool isGrid) async {
-    setState(() {
-      _isGridView = isGrid;
-    });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('menu_is_grid_view', isGrid);
-    } catch (_) {}
   }
 
   @override
@@ -72,742 +42,411 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final catProvider = Provider.of<CategoryProvider>(context);
-    final prodProvider = Provider.of<ProductProvider>(context);
-    final cartProvider = Provider.of<CartProvider>(context);
-    final favProvider = Provider.of<FavoriteProvider>(context);
+    final storeProvider = Provider.of<VendorStoreProvider>(context);
     final adProvider = Provider.of<AdProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Dynamic search filtering
-    final filteredProducts =
-        prodProvider.products.where((product) {
-          final matchesCategory =
-              _selectedCategoryId == null ||
-              product.mainCategoryId == _selectedCategoryId ||
-              product.subCategoryId == _selectedCategoryId;
-
-          final matchesSearch =
-              _searchQuery.trim().isEmpty ||
-              product.name.toLowerCase().contains(
-                _searchQuery.trim().toLowerCase(),
-              ) ||
-              product.description.toLowerCase().contains(
-                _searchQuery.trim().toLowerCase(),
-              );
-
-          return matchesCategory && matchesSearch;
-        }).toList();
+    final query = _searchQuery.trim().toLowerCase();
+    final stores = storeProvider.stores.where((store) {
+      if (query.isEmpty) return true;
+      final nameMatch = store.name.toLowerCase().contains(query);
+      final descMatch = store.description?.toLowerCase().contains(query) ?? false;
+      final addrMatch = store.address?.toLowerCase().contains(query) ?? false;
+      return nameMatch || descMatch || addrMatch;
+    }).toList();
 
     return CustomScrollView(
       controller: widget.scrollController,
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // 1. Ads Carousel Slider (Scrolls off screen and disappears)
+        // 1. Ads Carousel Slider at top
         SliverToBoxAdapter(child: _buildCarouselAds(adProvider)),
 
-        // 2. Custom Store Promo Banner Card (Coming soon)
+        // 2. Custom Store Promo Banner Card ("اطلب من أي محل آخر")
         SliverToBoxAdapter(child: _buildCustomStoreBanner(context)),
 
-        // 2. Sticky Header (Search Bar + Categories + Section Title stay pinned)
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyMenuHeaderDelegate(
-            height: 215.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildSearchBar(),
-                _buildCategoriesAvatars(catProvider),
-                _buildSectionTitle(catProvider, filteredProducts.length),
-              ],
-            ),
+        // 3. Search Bar for Stores & Header Title
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearchBar(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'المطاعم والمتاجر المتاحة 🏬',
+                          style: AppFonts.cairoFont(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${stores.length} مطعم',
+                        style: AppFonts.cairoFont(
+                          fontSize: 11,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
 
-        // 5. Memory-efficient Lazy Loading Products list
-        if (prodProvider.isLoading)
-          SliverToBoxAdapter(child: _buildShimmerProducts())
-        else if (filteredProducts.isEmpty)
+        // 4. Stores List / Grid
+        if (storeProvider.isLoading && storeProvider.stores.isEmpty)
+          SliverToBoxAdapter(child: _buildShimmerStores())
+        else if (stores.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  _searchQuery.isNotEmpty
-                      ? 'لا توجد نتائج تطابق البحث'
-                      : 'لا توجد أصناف متوفرة في هذه الفئة',
-                  style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.storefront_outlined,
+                      size: 64,
+                      color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      query.isNotEmpty
+                          ? 'لا توجد مطاعم أو متاجر تطابق البحث "$query"'
+                          : 'لا تتوفر مطاعم أو متاجر حالياً',
+                      style: AppFonts.cairoFont(fontSize: 14, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
           )
-        else if (_isGridView)
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.58,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              delegate: SliverChildBuilderDelegate((ctx, index) {
-                final product = filteredProducts[index];
-                final isFav = favProvider.isFavorite(product.id);
-                final isInCart = cartProvider.items.containsKey(product.id);
-                final qty =
-                    isInCart ? cartProvider.items[product.id]!.quantity : 0;
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                CategoryModel? cat;
-                try {
-                  cat = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
-                } catch (_) {}
-
-                return _buildGridProductCard(
-                  product,
-                  isFav,
-                  isInCart,
-                  qty,
-                  isDark,
-                  favProvider,
-                  cartProvider,
-                  cat,
-                );
-              }, childCount: filteredProducts.length),
-            ),
-          )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((ctx, index) {
-                final product = filteredProducts[index];
-                final isFav = favProvider.isFavorite(product.id);
-                final isInCart = cartProvider.items.containsKey(product.id);
-                final qty =
-                    isInCart ? cartProvider.items[product.id]!.quantity : 0;
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                CategoryModel? cat;
-                try {
-                  cat = catProvider.categories.firstWhere((c) => c.id == product.mainCategoryId);
-                } catch (_) {}
-                final hasDisc = product.hasEffectiveDiscount(cat);
-                final effectivePrice = product.getEffectivePrice(cat);
-
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailsScreen(product: product),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? AppColors.darkBorder
-                                : Colors.grey.shade200,
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(isDark ? 20 : 6),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Product Image Card
-                        Stack(
-                          children: [
-                            Hero(
-                              tag: 'product_image_${product.id}',
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: CustomCachedImage(
-                                  imageUrl:
-                                      product.images.isNotEmpty
-                                          ? product.images.first
-                                          : '',
-                                  width: 95,
-                                  height: 95,
-                                  fit: BoxFit.cover,
-                                  errorWidget: const Icon(
-                                    Icons.fastfood,
-                                    size: 36,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (hasDisc)
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.danger,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    '🔥 ${product.getDiscountBadgeText(cat)}',
-                                    style: AppFonts.cairoFont(
-                                      fontSize: 9,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (!product.isAvailable)
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withAlpha(140),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'غير متوفر',
-                                      style: AppFonts.cairoFont(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 14),
-
-                        // Product details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      product.name,
-                                      style: AppFonts.cairoFont(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    icon: Icon(
-                                      isFav
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color:
-                                          isFav
-                                              ? AppColors.danger
-                                              : Colors.grey.shade400,
-                                      size: 22,
-                                    ),
-                                    onPressed: () {
-                                      favProvider.toggleFavorite(product.id);
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                product.description,
-                                style: AppFonts.cairoFont(
-                                  fontSize: 11,
-                                  color:
-                                      isDark
-                                          ? Colors.grey.shade400
-                                          : Colors.grey.shade600,
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        if (hasDisc)
-                                          Text(
-                                            Formatters.formatCurrency(product.price),
-                                            style: AppFonts.cairoFont(
-                                              fontSize: 10.5,
-                                              color: Colors.grey.shade500,
-                                              decoration: TextDecoration.lineThrough,
-                                              decorationColor: Colors.grey.shade500,
-                                            ),
-                                            maxLines: 1,
-                                          ),
-                                        Text(
-                                          Formatters.formatCurrency(effectivePrice),
-                                          style: AppFonts.cairoFont(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: hasDisc ? Colors.green.shade700 : AppColors.primary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Add to cart interactive controls
-                                  if (product.isAvailable)
-                                    Builder(
-                                      builder: (ctx) {
-                                        if (isInCart) {
-                                          return Container(
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary
-                                                  .withAlpha(15),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: AppColors.primary
-                                                    .withAlpha(60),
-                                              ),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                              vertical: 2,
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                InkWell(
-                                                  onTap:
-                                                      () => cartProvider
-                                                          .decrementItem(
-                                                            product.id,
-                                                          ),
-                                                  child: const Icon(
-                                                    Icons.remove,
-                                                    color: AppColors.danger,
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                      ),
-                                                  child: Text(
-                                                    '$qty',
-                                                    style: AppFonts.cairoFont(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: AppColors.primary,
-                                                    ),
-                                                  ),
-                                                ),
-                                                InkWell(
-                                                  onTap:
-                                                      () => cartProvider
-                                                          .addToCart(product, category: cat),
-                                                  child: const Icon(
-                                                    Icons.add,
-                                                    color: AppColors.primary,
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        } else {
-                                          return ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  AppColors.primary,
-                                              elevation: 0,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
-                                                  ),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                            ),
-                                            icon: const Icon(
-                                              Icons.add_shopping_cart,
-                                              size: 14,
-                                              color: Colors.white,
-                                            ),
-                                            label: Text(
-                                              'إضافة للطلب',
-                                              style: AppFonts.cairoFont(
-                                                fontSize: 11,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              cartProvider.addToCart(product, category: cat);
-                                              CustomDialog.showSuccessSnackBar(
-                                                context,
-                                                'تم إضافة ${product.name} إلى السلة',
-                                              );
-                                            },
-                                          );
-                                        }
-                                      },
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }, childCount: filteredProducts.length),
+              delegate: SliverChildBuilderDelegate(
+                (ctx, index) {
+                  final store = stores[index];
+                  return _buildStoreCard(context, store, isDark);
+                },
+                childCount: stores.length,
+              ),
             ),
           ),
       ],
     );
   }
 
-  /// Grid Product Card Item (2 Columns View)
-  Widget _buildGridProductCard(
-    ProductModel product,
-    bool isFav,
-    bool isInCart,
-    int qty,
-    bool isDark,
-    FavoriteProvider favProvider,
-    CartProvider cartProvider,
-    CategoryModel? category,
-  ) {
-    final hasDisc = product.hasEffectiveDiscount(category);
-    final effectivePrice = product.getEffectivePrice(category);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProductDetailsScreen(product: product),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(isDark ? 20 : 8),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+  /// Modern Store Card with Cover Image, Logo, Address, Rating, and Status Badge
+  Widget _buildStoreCard(BuildContext context, StoreModel store, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 25 : 8),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => StoreMenuScreen(store: store),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Stack with Favorite button overlay & Discount badge
+            // Store Cover & Status Badge & Logo Overlay
             Stack(
+              clipBehavior: Clip.none,
               children: [
-                Hero(
-                  tag: 'product_image_${product.id}',
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(17),
-                    ),
-                    child: CustomCachedImage(
-                      imageUrl:
-                          product.images.isNotEmpty ? product.images.first : '',
-                      width: double.infinity,
-                      height: 125,
-                      fit: BoxFit.cover,
-                      errorWidget: const Icon(
-                        Icons.fastfood,
-                        size: 36,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-                // Favorite Button Overlay
-                Positioned(
-                  top: 8,
-                  left: 8,
+                // Cover Image
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: (isDark ? Colors.black : Colors.white).withAlpha(
-                        190,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(20),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: Icon(
-                        isFav ? Icons.favorite : Icons.favorite_border,
-                        color: isFav ? AppColors.danger : Colors.grey.shade500,
-                        size: 18,
-                      ),
-                      onPressed: () {
-                        favProvider.toggleFavorite(product.id);
-                      },
-                    ),
+                    height: 130,
+                    width: double.infinity,
+                    color: AppColors.primary.withAlpha(20),
+                    child: store.coverUrl != null && store.coverUrl!.isNotEmpty
+                        ? CustomCachedImage(
+                            imageUrl: store.coverUrl!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: 130,
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primary.withAlpha(120),
+                                  AppColors.primary.withAlpha(50),
+                                ],
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.storefront, size: 50, color: Colors.white),
+                            ),
+                          ),
                   ),
                 ),
-                // Discount Badge Overlay
-                if (hasDisc)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.danger,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                          ),
+
+                // Gradient overlay over cover image
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withAlpha(60),
+                          Colors.transparent,
+                          Colors.black.withAlpha(90),
                         ],
                       ),
-                      child: Text(
-                        '🔥 ${product.getDiscountBadgeText(category)}',
-                        style: AppFonts.cairoFont(
-                          fontSize: 9.5,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                   ),
-                // Unavailable Overlay
-                if (!product.isAvailable)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(17),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'غير متوفر',
-                          style: AppFonts.cairoFont(
-                            fontSize: 11,
+                ),
+
+                // Store Open/Closed Badge (Top Left)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: store.isOpen ? Colors.green.shade600 : AppColors.danger,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 4),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
                             color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          store.isOpen ? 'مفتوح 🟢' : 'مغلق 🔴',
+                          style: AppFonts.cairoFont(
+                            color: Colors.white,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
+                ),
+
+                // Rating Badge (Top Right)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(160),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          store.rating.toStringAsFixed(1),
+                          style: AppFonts.cairoFont(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Store Logo Avatar (Overlapping bottom left of cover)
+                Positioned(
+                  bottom: -24,
+                  right: 16,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(30),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: store.logoUrl != null && store.logoUrl!.isNotEmpty
+                          ? CustomCachedImage(
+                              imageUrl: store.logoUrl!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              color: AppColors.primary.withAlpha(30),
+                              child: const Icon(Icons.store, color: AppColors.primary, size: 28),
+                            ),
+                    ),
+                  ),
+                ),
               ],
             ),
 
-            // Product Details (Title, Description, Price & Actions)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.name,
+            const SizedBox(height: 12),
+
+            // Store Info Details
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          store.name,
                           style: AppFonts.cairoFont(
-                            fontSize: 13,
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          product.description,
-                          style: AppFonts.cairoFont(
-                            fontSize: 10,
-                            color:
-                                isDark
-                                    ? Colors.grey.shade400
-                                    : Colors.grey.shade600,
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
 
-                    // Price & Cart Button
+                  if (store.address != null && store.address!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        const Icon(Icons.location_on_outlined, size: 15, color: AppColors.primary),
+                        const SizedBox(width: 4),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (hasDisc)
-                                Text(
-                                  Formatters.formatCurrency(product.price),
-                                  style: AppFonts.cairoFont(
-                                    fontSize: 9.5,
-                                    color: Colors.grey.shade500,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: Colors.grey.shade500,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                              Text(
-                                Formatters.formatCurrency(effectivePrice),
-                                style: AppFonts.cairoFont(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: hasDisc ? Colors.green.shade700 : AppColors.primary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                          child: Text(
+                            store.address!,
+                            style: AppFonts.cairoFont(
+                              fontSize: 12,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (product.isAvailable)
-                          Builder(
-                            builder: (ctx) {
-                              if (isInCart) {
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha(15),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppColors.primary.withAlpha(60),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 2,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      InkWell(
-                                        onTap:
-                                            () => cartProvider.decrementItem(
-                                              product.id,
-                                            ),
-                                        child: const Icon(
-                                          Icons.remove,
-                                          color: AppColors.danger,
-                                          size: 16,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                        ),
-                                        child: Text(
-                                          '$qty',
-                                          style: AppFonts.cairoFont(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap:
-                                            () =>
-                                                cartProvider.addToCart(product),
-                                        child: const Icon(
-                                          Icons.add,
-                                          color: AppColors.primary,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              } else {
-                                return InkWell(
-                                  onTap: () {
-                                    cartProvider.addToCart(product);
-                                    CustomDialog.showSuccessSnackBar(
-                                      context,
-                                      'تم إضافة ${product.name} إلى السلة',
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.add_shopping_cart,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
                       ],
                     ),
                   ],
-                ),
+
+                  if (store.description != null && store.description!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      store.description!,
+                      style: AppFonts.cairoFont(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'تصفح القائمة والوجبات',
+                        style: AppFonts.cairoFont(
+                          fontSize: 12.5,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'دخول المطعم',
+                              style: AppFonts.cairoFont(
+                                fontSize: 11,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -816,95 +455,63 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// Display interactive full screen preview dialog when tapping an ad
-  void _showAdFullPreview(BuildContext context, AdModel ad) {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.all(16),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.75,
-                    maxWidth: MediaQuery.of(context).size.width * 0.95,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(230),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppColors.primary.withAlpha(100),
-                      width: 1.5,
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (ad.title.trim().isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          child: Text(
-                            ad.title,
-                            style: AppFonts.cairoFont(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      Flexible(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: InteractiveViewer(
-                            minScale: 0.8,
-                            maxScale: 3.5,
-                            child: CustomCachedImage(
-                              imageUrl: ad.imageUrl,
-                              fit: BoxFit.contain,
-                              errorWidget: const Icon(
-                                Icons.broken_image,
-                                size: 60,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: CircleAvatar(
-                    backgroundColor: Colors.black.withAlpha(180),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+  /// Modern search bar for stores
+  Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hintColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final iconColor = isDark ? Colors.white70 : Colors.grey.shade700;
+    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
+    final fillColor = isDark ? AppColors.darkSurfaceLight : Colors.white;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 5, 16, 4),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          hintText: 'ابحث عن مطعم، كافيه، أو متجر...',
+          hintStyle: AppFonts.cairoFont(
+            color: hintColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
+          prefixIcon: Icon(Icons.search, size: 20, color: iconColor),
+          filled: true,
+          fillColor: fillColor,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 16,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: borderColor, width: 1.2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, size: 18, color: hintColor),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+        ),
+      ),
     );
   }
 
-  /// Package based ads carousel (No Title display as requested)
+  /// Package based ads carousel
   Widget _buildCarouselAds(AdProvider adProvider) {
     final activeAds = adProvider.activeAds;
     if (activeAds.isEmpty) return const SizedBox.shrink();
@@ -975,10 +582,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   width: _currentAdPage == index ? 14 : 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color:
-                        _currentAdPage == index
-                            ? AppColors.primary
-                            : Colors.grey.shade400,
+                    color: _currentAdPage == index ? AppColors.primary : Colors.grey.shade400,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -990,524 +594,12 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// Modern search bar
-  Widget _buildSearchBar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hintColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final iconColor = isDark ? Colors.white70 : Colors.grey.shade700;
-    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
-    final fillColor = isDark ? AppColors.darkSurfaceLight : Colors.white;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 8),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) {
-          setState(() {
-            _searchQuery = val;
-          });
-        },
-        style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.w600),
-        decoration: InputDecoration(
-          hintText: 'ابحث عن وجبتك المفضلة أو مشروبك...',
-          hintStyle: AppFonts.cairoFont(
-            color: hintColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-          prefixIcon: Icon(Icons.search, size: 20, color: iconColor),
-          filled: true,
-          fillColor: fillColor,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 16,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: borderColor, width: 1.2),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-          ),
-          suffixIcon:
-              _searchQuery.isNotEmpty
-                  ? IconButton(
-                    icon: Icon(Icons.clear, size: 18, color: hintColor),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
-                  )
-                  : null,
-        ),
-      ),
-    );
-  }
-
-  /// Circular Avatars displaying Category Images with Shimmer support
-  Widget _buildCategoriesAvatars(CategoryProvider catProvider) {
-    if (catProvider.isLoading && catProvider.categories.isEmpty) {
-      return _buildShimmerCategories();
-    }
-
-    final mainCats = catProvider.mainCategories;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: 95,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          // "ALL" Option (الكل)
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategoryId = null;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Column(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color:
-                          _selectedCategoryId == null
-                              ? AppColors.primary
-                              : (isDark
-                                  ? AppColors.darkSurfaceLight
-                                  : Colors.grey.shade100),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color:
-                            _selectedCategoryId == null
-                                ? AppColors.primary
-                                : Colors.grey.shade300,
-                        width: 1.5,
-                      ),
-                      boxShadow:
-                          _selectedCategoryId == null
-                              ? [
-                                BoxShadow(
-                                  color: AppColors.primary.withAlpha(50),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                              : [],
-                    ),
-                    child: Icon(
-                      Icons.restaurant,
-                      size: 24,
-                      color:
-                          _selectedCategoryId == null
-                              ? Colors.white
-                              : (isDark ? Colors.white : Colors.grey.shade700),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'الكل',
-                    style: AppFonts.cairoFont(
-                      fontSize: 10,
-                      fontWeight:
-                          _selectedCategoryId == null
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                      color:
-                          _selectedCategoryId == null
-                              ? AppColors.primary
-                              : (isDark
-                                  ? AppColors.darkTextPrimary
-                                  : Colors.black),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Categories Circular List
-          ...mainCats.map((cat) {
-            final isSelected = _selectedCategoryId == cat.id;
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCategoryId = cat.id;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(left: 14),
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color:
-                              isSelected
-                                  ? AppColors.primary
-                                  : Colors.grey.shade300,
-                          width: 2.0,
-                        ),
-                        boxShadow:
-                            isSelected
-                                ? [
-                                  BoxShadow(
-                                    color: AppColors.primary.withAlpha(50),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ]
-                                : [],
-                      ),
-                      child: ClipOval(
-                        child: CustomCachedImage(
-                          imageUrl: cat.imageUrl,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                          errorWidget: const Icon(
-                            Icons.fastfood,
-                            size: 24,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      cat.name,
-                      style: AppFonts.cairoFont(
-                        fontSize: 10,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color:
-                            isSelected
-                                ? AppColors.primary
-                                : (isDark
-                                    ? AppColors.darkTextPrimary
-                                    : Colors.black),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  /// Shimmer placeholder loader for categories
-  Widget _buildShimmerCategories() {
-    return Container(
-      height: 95,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 6,
-        itemBuilder:
-            (ctx, idx) => Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Shimmer.fromColors(
-                baseColor: Colors.grey.shade300,
-                highlightColor: Colors.grey.shade100,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(width: 40, height: 10, color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-      ),
-    );
-  }
-
-  /// Shimmer placeholder loader for products list
-  Widget _buildShimmerProducts() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: 4,
-      itemBuilder:
-          (ctx, idx) => Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Shimmer.fromColors(
-                baseColor: Colors.grey.shade300,
-                highlightColor: Colors.grey.shade100,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 85,
-                      height: 85,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 14,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            height: 12,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: 150,
-                            height: 12,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                width: 60,
-                                height: 16,
-                                color: Colors.white,
-                              ),
-                              Container(
-                                width: 80,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-    );
-  }
-
-  /// Section Title & Products Count Header
-  Widget _buildSectionTitle(CategoryProvider catProvider, int count) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.restaurant_menu,
-                      size: 20,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _selectedCategoryId == null
-                            ? 'جميع الأطباق والوجبات'
-                            : (catProvider.categories.any(
-                                  (c) => c.id == _selectedCategoryId,
-                                )
-                                ? catProvider.categories
-                                    .firstWhere(
-                                      (c) => c.id == _selectedCategoryId,
-                                    )
-                                    .name
-                                : 'الأصناف'),
-                        style: AppFonts.cairoFont(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Products Count Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'الأصناف: $count',
-                  style: AppFonts.cairoFont(
-                    fontSize: 11,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // View Mode Selector (List vs Grid Toggle Switch)
-              Builder(
-                builder: (ctx) {
-                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                  return Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? AppColors.darkSurfaceLight
-                              : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? AppColors.darkBorder
-                                : Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // List View Button
-                        InkWell(
-                          onTap: () => _toggleViewMode(false),
-                          borderRadius: const BorderRadius.horizontal(
-                            right: Radius.circular(9),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  !_isGridView
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                              borderRadius: const BorderRadius.horizontal(
-                                right: Radius.circular(9),
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.view_list_rounded,
-                              size: 18,
-                              color:
-                                  !_isGridView
-                                      ? Colors.white
-                                      : (isDark
-                                          ? Colors.grey.shade400
-                                          : Colors.grey.shade600),
-                            ),
-                          ),
-                        ),
-                        // Grid View Button
-                        InkWell(
-                          onTap: () => _toggleViewMode(true),
-                          borderRadius: const BorderRadius.horizontal(
-                            left: Radius.circular(9),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  _isGridView
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                              borderRadius: const BorderRadius.horizontal(
-                                left: Radius.circular(9),
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.grid_view_rounded,
-                              size: 18,
-                              color:
-                                  _isGridView
-                                      ? Colors.white
-                                      : (isDark
-                                          ? Colors.grey.shade400
-                                          : Colors.grey.shade600),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        Builder(
-          builder: (ctx) {
-            final isDark = Theme.of(ctx).brightness == Brightness.dark;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Divider(
-                height: 1,
-                thickness: 1.2,
-                color: isDark ? AppColors.darkBorder : Colors.grey.shade300,
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
   /// Banner card promoting "Order from another store" feature
   Widget _buildCustomStoreBanner(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
@@ -1518,16 +610,9 @@ class _MenuScreenState extends State<MenuScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors:
-                    isDark
-                        ? [
-                          AppColors.primary.withAlpha(40),
-                          AppColors.primary.withAlpha(15),
-                        ]
-                        : [
-                          AppColors.primary.withAlpha(20),
-                          AppColors.primary.withAlpha(5),
-                        ],
+                colors: isDark
+                    ? [AppColors.primary.withAlpha(40), AppColors.primary.withAlpha(15)]
+                    : [AppColors.primary.withAlpha(20), AppColors.primary.withAlpha(5)],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
@@ -1553,7 +638,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     ],
                   ),
                   child: const Icon(
-                    Icons.storefront_rounded,
+                    Icons.two_wheeler_rounded,
                     color: Colors.white,
                     size: 24,
                   ),
@@ -1596,13 +681,10 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'اشتري من اي محل اخر؟ نوصّله لك من أي مكان 🛵',
+                        'تبي شيء من محل غير موجود؟ نوصّله لك فوراً 🛵',
                         style: AppFonts.cairoFont(
                           fontSize: 11,
-                          color:
-                              isDark
-                                  ? AppColors.darkTextSecondary
-                                  : Colors.grey.shade700,
+                          color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -1620,43 +702,127 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
-}
 
-/// Custom Persistent Header Delegate to keep Search Bar, Categories & Section Title pinned on scroll
-class _StickyMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  final double height;
-
-  _StickyMenuHeaderDelegate({required this.child, this.height = 215.0});
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      color:
-          isDark
-              ? AppColors.darkBackground
-              : Theme.of(context).scaffoldBackgroundColor,
-      height: height,
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        child: child,
+  /// Full screen ad preview
+  void _showAdFullPreview(BuildContext context, AdModel ad) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxWidth: MediaQuery.of(context).size.width * 0.95,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(230),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.primary.withAlpha(100),
+                  width: 1.5,
+                ),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (ad.title.trim().isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        ad.title,
+                        style: AppFonts.cairoFont(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Flexible(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: InteractiveViewer(
+                        minScale: 0.8,
+                        maxScale: 3.5,
+                        child: CustomCachedImage(
+                          imageUrl: ad.imageUrl,
+                          fit: BoxFit.contain,
+                          errorWidget: const Icon(
+                            Icons.broken_image,
+                            size: 60,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withAlpha(180),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  @override
-  double get maxExtent => height;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  bool shouldRebuild(covariant _StickyMenuHeaderDelegate oldDelegate) {
-    return oldDelegate.height != height || oldDelegate.child != child;
+  /// Shimmer loading placeholder for stores
+  Widget _buildShimmerStores() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: 3,
+      itemBuilder: (ctx, idx) => Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          height: 200,
+          padding: const EdgeInsets.all(12),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 110,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(width: 140, height: 16, color: Colors.white),
+                const SizedBox(height: 8),
+                Container(width: 200, height: 12, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

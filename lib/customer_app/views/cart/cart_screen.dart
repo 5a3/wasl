@@ -101,6 +101,8 @@ class _CartScreenState extends State<CartScreen> {
       note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
       additionalPhone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
       paymentMethod: _selectedPaymentMethod,
+      storeId: cartProvider.currentStoreId,
+      storeName: cartProvider.currentStoreName,
     );
 
     if (!mounted) return;
@@ -271,19 +273,20 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(height: 10),
                   Builder(
                     builder: (context) {
+                      final storeZones = zoneProvider.getZonesByStore(cartProvider.currentStoreId).where((z) => z.isActive).toList();
                       final selectedZone = cartProvider.selectedZone;
-                      final validZone = (selectedZone != null && zoneProvider.activeZones.any((z) => z.id == selectedZone.id))
-                          ? zoneProvider.activeZones.firstWhere((z) => z.id == selectedZone.id)
+                      final validZone = (selectedZone != null && storeZones.any((z) => z.id == selectedZone.id))
+                          ? storeZones.firstWhere((z) => z.id == selectedZone.id)
                           : null;
 
                       return DropdownButtonFormField<DeliveryZoneModel>(
                         isExpanded: true,
                         value: validZone,
                         decoration: const InputDecoration(
-                          labelText: 'اختر منطقة التوصيل (المحددة من الإدارة)',
+                          labelText: 'اختر منطقة التوصيل (المحددة لهذا المطعم)',
                           prefixIcon: Icon(Icons.map_outlined),
                         ),
-                        items: zoneProvider.activeZones.map((zone) {
+                        items: storeZones.map((zone) {
                           return DropdownMenuItem(
                             value: zone,
                             child: Text(
@@ -328,7 +331,7 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(height: 8),
                   Consumer<PaymentMethodProvider>(
                     builder: (ctx, pmProvider, _) {
-                      final activeMethods = pmProvider.activePaymentMethods;
+                      final activeMethods = pmProvider.getPaymentMethodsByStore(cartProvider.currentStoreId).where((m) => m.isActive).toList();
 
                       if (pmProvider.isLoading) {
                         return const Padding(

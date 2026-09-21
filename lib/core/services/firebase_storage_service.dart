@@ -120,6 +120,80 @@ class FirebaseStorageService {
     }
   }
 
+  /// Upload Store Logo to: `stores/<store_name>/logo_<timestamp>.jpg`
+  static Future<String> uploadStoreLogo({
+    required dynamic imageFile, // File or Uint8List or URL String
+    required String storeName,
+  }) async {
+    if (imageFile is String && imageFile.startsWith('http')) {
+      return imageFile; // If user kept existing web URL
+    }
+
+    try {
+      final cleanStoreName = storeName.trim().replaceAll(RegExp(r'[^\w\s\u0600-\u06FF]'), '_');
+      final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = 'stores/$cleanStoreName/$fileName';
+
+      final ref = _storage.ref().child(storagePath);
+      UploadTask uploadTask;
+
+      if (kIsWeb && imageFile is Uint8List) {
+        uploadTask = ref.putData(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else if (imageFile is File) {
+        uploadTask = ref.putFile(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else {
+        throw 'نوع الملف غير مدعوم للرفع';
+      }
+
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found' || e.message?.contains('404') == true) {
+        throw 'لم يتم تفعيل Firebase Storage في مشروع wasl-cdcb6! يرجى إنشاؤها وتعديل الـ Rules في Firebase Console.';
+      }
+      throw 'خطأ رفع شعار المطعم: ${e.message}';
+    } catch (e) {
+      throw 'فشل رفع شعار المطعم: ${e.toString()}';
+    }
+  }
+
+  /// Upload Store Cover Image to: `stores/<store_name>/cover_<timestamp>.jpg`
+  static Future<String> uploadStoreCover({
+    required dynamic imageFile, // File or Uint8List or URL String
+    required String storeName,
+  }) async {
+    if (imageFile is String && imageFile.startsWith('http')) {
+      return imageFile; // If user kept existing web URL
+    }
+
+    try {
+      final cleanStoreName = storeName.trim().replaceAll(RegExp(r'[^\w\s\u0600-\u06FF]'), '_');
+      final fileName = 'cover_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = 'stores/$cleanStoreName/$fileName';
+
+      final ref = _storage.ref().child(storagePath);
+      UploadTask uploadTask;
+
+      if (kIsWeb && imageFile is Uint8List) {
+        uploadTask = ref.putData(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else if (imageFile is File) {
+        uploadTask = ref.putFile(imageFile, SettableMetadata(contentType: 'image/jpeg'));
+      } else {
+        throw 'نوع الملف غير مدعوم للرفع';
+      }
+
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found' || e.message?.contains('404') == true) {
+        throw 'لم يتم تفعيل Firebase Storage في مشروع wasl-cdcb6! يرجى إنشاؤها وتعديل الـ Rules في Firebase Console.';
+      }
+      throw 'خطأ رفع صورة غلاف المطعم: ${e.message}';
+    } catch (e) {
+      throw 'فشل رفع صورة غلاف المطعم: ${e.toString()}';
+    }
+  }
+
   /// Delete image from Firebase Storage if it exists
   static Future<void> deleteImage(String imageUrl) async {
     if (imageUrl.isEmpty || !imageUrl.startsWith('http')) return;

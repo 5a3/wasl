@@ -14,6 +14,7 @@ import '../../../core/constants/admin_permissions.dart';
 import '../../../shared/models/category_model.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/category_provider.dart';
+import '../../providers/vendor_store_provider.dart';
 
 class AddEditCategoryScreen extends StatefulWidget {
   final CategoryModel? categoryToEdit;
@@ -34,6 +35,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   bool _isUploading = false;
   bool _hasDiscount = false;
   String _discountType = 'percentage';
+  String? _selectedStoreId;
 
   bool get isEditing => widget.categoryToEdit != null;
 
@@ -48,6 +50,10 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     );
     _hasDiscount = widget.categoryToEdit?.hasDiscount ?? false;
     _discountType = widget.categoryToEdit?.discountType ?? 'percentage';
+    _selectedStoreId = widget.categoryToEdit?.storeId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
+    });
   }
 
   @override
@@ -131,6 +137,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
           hasDiscount: _hasDiscount,
           discountType: _discountType,
           discountValue: discountVal,
+          storeId: _selectedStoreId,
         );
       } else {
         ok = await catProvider.addCategory(
@@ -140,6 +147,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
           hasDiscount: _hasDiscount,
           discountType: _discountType,
           discountValue: discountVal,
+          storeId: _selectedStoreId,
         );
       }
 
@@ -200,6 +208,41 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                 hintText: 'مثال: عصائر طازجة، وجبات سريعة...',
                 prefixIcon: Icons.category_outlined,
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم الفئة' : null,
+              ),
+              const SizedBox(height: 16),
+              Consumer<VendorStoreProvider>(
+                builder: (context, storeProv, child) {
+                  final stores = storeProv.stores;
+                  return DropdownButtonFormField<String?>(
+                    value: stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
+                    decoration: InputDecoration(
+                      labelText: 'المطعم التابع له القسم *',
+                      prefixIcon: const Icon(Icons.storefront),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('غير محدد (جميع المطاعم)'),
+                      ),
+                      ...stores.map(
+                        (s) => DropdownMenuItem<String?>(
+                          value: s.id,
+                          child: Text(s.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedStoreId = val;
+                      });
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 16),
               // Category Discount Container

@@ -51,9 +51,16 @@ class DeliveryZoneProvider extends ChangeNotifier {
     }
   }
 
+  List<DeliveryZoneModel> getZonesByStore(String? storeId) {
+    if (storeId == null || storeId.isEmpty) return zones;
+    return zones.where((z) => z.storeId == storeId || z.storeId == null).toList();
+  }
+
   Future<bool> addDeliveryZone({
     required String zoneName,
     required double deliveryFee,
+    String? storeId,
+    String? storeName,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionDeliveryZones).doc();
@@ -62,6 +69,8 @@ class DeliveryZoneProvider extends ChangeNotifier {
         zoneName: zoneName.trim(),
         deliveryFee: deliveryFee,
         isActive: true,
+        storeId: storeId,
+        storeName: storeName,
       );
 
       await docRef.set(newZone.toMap());
@@ -79,6 +88,8 @@ class DeliveryZoneProvider extends ChangeNotifier {
     required String id,
     required String zoneName,
     required double deliveryFee,
+    String? storeId,
+    String? storeName,
   }) async {
     try {
       final index = _zones.indexWhere((z) => z.id == id);
@@ -88,6 +99,8 @@ class DeliveryZoneProvider extends ChangeNotifier {
           zoneName: zoneName.trim(),
           deliveryFee: deliveryFee,
           isActive: _zones[index].isActive,
+          storeId: storeId ?? _zones[index].storeId,
+          storeName: storeName ?? _zones[index].storeName,
         );
 
         await _firestore

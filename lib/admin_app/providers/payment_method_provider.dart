@@ -91,11 +91,18 @@ class PaymentMethodProvider extends ChangeNotifier {
     }
   }
 
+  List<PaymentMethodModel> getPaymentMethodsByStore(String? storeId) {
+    if (storeId == null || storeId.isEmpty) return paymentMethods;
+    return paymentMethods.where((m) => m.isGlobal || m.storeId == storeId || m.storeId == null).toList();
+  }
+
   Future<bool> addPaymentMethod({
     required String name,
     required String description,
     required String accountNumber,
     bool isActive = true,
+    String? storeId,
+    bool isGlobal = true,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -109,6 +116,8 @@ class PaymentMethodProvider extends ChangeNotifier {
         isActive: isActive,
         orderIndex: _paymentMethods.length,
         createdAt: DateTime.now(),
+        storeId: storeId,
+        isGlobal: isGlobal,
       );
 
       final docRef = await _firestore
@@ -135,11 +144,20 @@ class PaymentMethodProvider extends ChangeNotifier {
     required String description,
     required String accountNumber,
     required bool isActive,
+    String? storeId,
+    bool? isGlobal,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      final index = _paymentMethods.indexWhere((m) => m.id == id);
+      final currentStoreId = index != -1 ? _paymentMethods[index].storeId : null;
+      final currentIsGlobal = index != -1 ? _paymentMethods[index].isGlobal : true;
+
+      final updatedStoreId = storeId ?? currentStoreId;
+      final updatedIsGlobal = isGlobal ?? currentIsGlobal;
+
       await _firestore
           .collection(FirebaseConstants.collectionPaymentMethods)
           .doc(id)
@@ -148,15 +166,18 @@ class PaymentMethodProvider extends ChangeNotifier {
         'description': description,
         'accountNumber': accountNumber,
         'isActive': isActive,
+        'storeId': updatedStoreId,
+        'isGlobal': updatedIsGlobal,
       });
 
-      final index = _paymentMethods.indexWhere((m) => m.id == id);
       if (index != -1) {
         _paymentMethods[index] = _paymentMethods[index].copyWith(
           name: name,
           description: description,
           accountNumber: accountNumber,
           isActive: isActive,
+          storeId: updatedStoreId,
+          isGlobal: updatedIsGlobal,
         );
       }
 

@@ -59,6 +59,11 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  List<ProductModel> getProductsByStore(String? storeId) {
+    if (storeId == null || storeId.isEmpty) return products;
+    return products.where((p) => p.storeId == storeId || p.storeId == null).toList();
+  }
+
   /// Add new product with up to 3 images and optional discount settings
   Future<bool> addProduct({
     required String name,
@@ -71,6 +76,8 @@ class ProductProvider extends ChangeNotifier {
     bool hasDiscount = false,
     String discountType = 'percentage',
     double discountValue = 0.0,
+    String? storeId,
+    String? storeName,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionProducts).doc();
@@ -88,6 +95,8 @@ class ProductProvider extends ChangeNotifier {
         discountType: discountType,
         discountValue: discountValue,
         createdAt: DateTime.now(),
+        storeId: storeId,
+        storeName: storeName,
       );
 
       await docRef.set(newProduct.toMap());
@@ -114,6 +123,8 @@ class ProductProvider extends ChangeNotifier {
     bool hasDiscount = false,
     String discountType = 'percentage',
     double discountValue = 0.0,
+    String? storeId,
+    String? storeName,
   }) async {
     try {
       final index = _products.indexWhere((p) => p.id == id);
@@ -133,6 +144,8 @@ class ProductProvider extends ChangeNotifier {
           discountType: discountType,
           discountValue: discountValue,
           createdAt: old.createdAt,
+          storeId: storeId ?? old.storeId,
+          storeName: storeName ?? old.storeName,
         );
 
         await _firestore
@@ -191,18 +204,7 @@ class ProductProvider extends ChangeNotifier {
       final index = _products.indexWhere((p) => p.id == productId);
       if (index != -1) {
         final p = _products[index];
-        _products[index] = ProductModel(
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          mainCategoryId: p.mainCategoryId,
-          subCategoryId: p.subCategoryId,
-          images: p.images,
-          isAvailable: isAvailable,
-          salesCount: p.salesCount,
-          createdAt: p.createdAt,
-        );
+        _products[index] = p.copyWith(isAvailable: isAvailable);
         notifyListeners();
       }
       return true;

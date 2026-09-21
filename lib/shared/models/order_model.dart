@@ -62,6 +62,8 @@ class OrderModel {
   final String? paymentNote;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? storeId;
+  final String? storeName;
 
   OrderModel({
     required this.id,
@@ -84,6 +86,8 @@ class OrderModel {
     this.paymentNote,
     required this.createdAt,
     required this.updatedAt,
+    this.storeId,
+    this.storeName,
   });
 
   String get statusArabic {
@@ -125,6 +129,8 @@ class OrderModel {
       'paymentNote': paymentNote,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'storeId': storeId,
+      'storeName': storeName,
     };
   }
 
@@ -153,6 +159,8 @@ class OrderModel {
       paymentNote: map['paymentNote'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      storeId: map['storeId'],
+      storeName: map['storeName'],
     );
   }
 }

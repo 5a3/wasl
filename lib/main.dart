@@ -25,6 +25,7 @@ import 'admin_app/providers/order_management_provider.dart';
 import 'admin_app/providers/payment_method_provider.dart';
 import 'admin_app/providers/product_provider.dart';
 import 'admin_app/providers/ad_provider.dart';
+import 'admin_app/providers/vendor_store_provider.dart';
 import 'admin_app/views/auth/admin_login_screen.dart';
 
 // Customer App Providers & Views
@@ -120,6 +121,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()),
         ChangeNotifierProvider(create: (_) => StoreProvider()),
+        ChangeNotifierProvider(create: (_) => VendorStoreProvider()),
         ChangeNotifierProvider(create: (_) => AdminAuthProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
@@ -132,7 +134,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CustomerAuthProvider()),
         ChangeNotifierProvider(create: (_) => PaymentMethodProvider()),
         ChangeNotifierProvider(create: (_) => ComplaintProvider()),
-        ChangeNotifierProxyProvider2<CustomerAuthProvider, CategoryProvider, CartProvider>(
+        ChangeNotifierProxyProvider2<
+          CustomerAuthProvider,
+          CategoryProvider,
+          CartProvider
+        >(
           create: (_) => CartProvider(),
           update: (_, auth, categoryProvider, cart) {
             cart?.setCategoryProvider(categoryProvider);
@@ -196,11 +202,12 @@ class WaslAppMain extends StatelessWidget {
       builder: (context, child) {
         return OfflineBannerWrapper(child: child ?? const SizedBox.shrink());
       },
-      home: !StorageService.isOnboardingCompleted()
-          ? const OnboardingScreen()
-          : (StorageService.isCustomerLoggedIn()
-              ? const CustomerHomeScreen()
-              : const CustomerLoginScreen()),
+      home:
+          !StorageService.isOnboardingCompleted()
+              ? const OnboardingScreen()
+              : (StorageService.isCustomerLoggedIn()
+                  ? const CustomerHomeScreen()
+                  : const CustomerHomeScreen()),
     );
   }
 }

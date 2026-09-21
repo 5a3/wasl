@@ -10,6 +10,7 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../../../shared/models/delivery_zone_model.dart';
 import '../../providers/admin_auth_provider.dart';
 import '../../providers/delivery_zone_provider.dart';
+import '../../providers/vendor_store_provider.dart';
 
 class AdminDeliveryZonesScreen extends StatefulWidget {
   const AdminDeliveryZonesScreen({super.key});
@@ -26,6 +27,7 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<DeliveryZoneProvider>(context, listen: false).fetchDeliveryZones();
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
     });
   }
 
@@ -53,75 +55,118 @@ class _AdminDeliveryZonesScreenState extends State<AdminDeliveryZonesScreen> {
 
     final zoneNameController = TextEditingController(text: zoneToEdit?.zoneName ?? '');
     final feeController = TextEditingController(text: zoneToEdit?.deliveryFee.toString() ?? '');
+    String? selectedStoreId = zoneToEdit?.storeId;
+    String? selectedStoreName = zoneToEdit?.storeName;
 
     showDialog(
       context: context,
       builder: (ctx) {
         final zoneProvider = Provider.of<DeliveryZoneProvider>(context, listen: false);
 
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            isEditing ? 'تعديل منطقة/خدمة التوصيل' : 'إضافة منطقة/خدمة توصيل',
-            textAlign: TextAlign.center,
-            style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomTextField(
-                controller: zoneNameController,
-                labelText: 'اسم المنطقة أو الخدمة',
-                hintText: 'مثال: داخل حريضة، خارج حريضة - منطقة أ...',
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                isEditing ? 'تعديل منطقة/خدمة التوصيل' : 'إضافة منطقة/خدمة توصيل',
+                textAlign: TextAlign.center,
+                style: AppFonts.cairoFont(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                controller: feeController,
-                labelText: 'سعر التوصيل (بالريال اليمني)',
-                hintText: 'مثال: 500',
-                keyboardType: TextInputType.number,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Consumer<VendorStoreProvider>(
+                    builder: (context, storeProv, _) {
+                      final stores = storeProv.stores;
+                      return DropdownButtonFormField<String?>(
+                        value: stores.any((s) => s.id == selectedStoreId) ? selectedStoreId : null,
+                        decoration: InputDecoration(
+                          labelText: 'المطعم التابع له خيار التوصيل *',
+                          prefixIcon: const Icon(Icons.storefront),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('جميع المطاعم (عام)'),
+                          ),
+                          ...stores.map((s) => DropdownMenuItem<String?>(
+                                value: s.id,
+                                child: Text(s.name),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          final st = stores.firstWhere((s) => s.id == val, orElse: () => stores.first);
+                          setDialogState(() {
+                            selectedStoreId = val;
+                            selectedStoreName = val != null ? st.name : null;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    controller: zoneNameController,
+                    labelText: 'اسم المنطقة أو الخدمة',
+                    hintText: 'مثال: داخل المدينة، الحي الماورائي...',
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    controller: feeController,
+                    labelText: 'سعر التوصيل للمطعم المختار (بالريال اليمني)',
+                    hintText: 'مثال: 500',
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final name = zoneNameController.text.trim();
-                final fee = double.tryParse(feeController.text.trim()) ?? 0.0;
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = zoneNameController.text.trim();
+                    final fee = double.tryParse(feeController.text.trim()) ?? 0.0;
 
-                if (name.isEmpty) return;
+                    if (name.isEmpty) return;
 
-                bool ok = false;
-                if (isEditing) {
-                  ok = await zoneProvider.editDeliveryZone(
-                    id: zoneToEdit.id,
-                    zoneName: name,
-                    deliveryFee: fee,
-                  );
-                } else {
-                  ok = await zoneProvider.addDeliveryZone(
-                    zoneName: name,
-                    deliveryFee: fee,
-                  );
-                }
+                    bool ok = false;
+                    if (isEditing) {
+                      ok = await zoneProvider.editDeliveryZone(
+                        id: zoneToEdit.id,
+                        zoneName: name,
+                        deliveryFee: fee,
+                        storeId: selectedStoreId,
+                        storeName: selectedStoreName,
+                      );
+                    } else {
+                      ok = await zoneProvider.addDeliveryZone(
+                        zoneName: name,
+                        deliveryFee: fee,
+                        storeId: selectedStoreId,
+                        storeName: selectedStoreName,
+                      );
+                    }
 
-                if (ok) {
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (mounted) {
-                    CustomDialog.showSuccessSnackBar(
-                      context,
-                      isEditing ? 'تم تعديل منطقة التوصيل بنجاح' : 'تم إضافة منطقة التوصيل بنجاح',
-                    );
-                  }
-                }
-              },
-              child: Text(isEditing ? 'تعديل' : 'حفظ'),
-            ),
-          ],
+                    if (ok) {
+                      if (ctx.mounted) {
+                        CustomDialog.showSuccessSnackBar(
+                          ctx,
+                          isEditing ? 'تم تعديل منطقة التوصيل بنجاح' : 'تم إضافة منطقة التوصيل بنجاح',
+                        );
+                        Navigator.of(ctx).pop();
+                      }
+                    }
+                  },
+                  child: Text(isEditing ? 'تعديل' : 'حفظ'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

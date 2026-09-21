@@ -4,12 +4,16 @@ class DeliveryZoneModel {
   final String zoneName;
   final double deliveryFee;
   final bool isActive;
+  final String? storeId;
+  final String? storeName;
 
   DeliveryZoneModel({
     required this.id,
     required this.zoneName,
     required this.deliveryFee,
     this.isActive = true,
+    this.storeId,
+    this.storeName,
   });
 
   Map<String, dynamic> toMap() {
@@ -18,6 +22,8 @@ class DeliveryZoneModel {
       'zoneName': zoneName,
       'deliveryFee': deliveryFee,
       'isActive': isActive,
+      'storeId': storeId,
+      'storeName': storeName,
     };
   }
 
@@ -27,6 +33,26 @@ class DeliveryZoneModel {
       zoneName: map['zoneName'] ?? '',
       deliveryFee: (map['deliveryFee'] as num?)?.toDouble() ?? 0.0,
       isActive: map['isActive'] ?? true,
+      storeId: map['storeId'],
+      storeName: map['storeName'],
+    );
+  }
+
+  DeliveryZoneModel copyWith({
+    String? id,
+    String? zoneName,
+    double? deliveryFee,
+    bool? isActive,
+    String? storeId,
+    String? storeName,
+  }) {
+    return DeliveryZoneModel(
+      id: id ?? this.id,
+      zoneName: zoneName ?? this.zoneName,
+      deliveryFee: deliveryFee ?? this.deliveryFee,
+      isActive: isActive ?? this.isActive,
+      storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
     );
   }
 
