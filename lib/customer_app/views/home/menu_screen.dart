@@ -523,31 +523,47 @@ class _MenuScreenState extends State<MenuScreen> {
 
                     // Category & City Badges
                     Wrap(
-                      spacing: 5,
-                      runSpacing: 2,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         if (store.storeCategoryName != null && store.storeCategoryName!.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(20),
-                              borderRadius: BorderRadius.circular(5),
+                              color: AppColors.primary.withAlpha(18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.primary.withAlpha(40), width: 0.8),
                             ),
-                            child: Text(
-                              store.storeCategoryName!,
-                              style: AppFonts.cairoFont(fontSize: 9.5, color: AppColors.primary, fontWeight: FontWeight.bold),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.category_rounded, size: 11, color: AppColors.primary),
+                                const SizedBox(width: 3),
+                                Text(
+                                  store.storeCategoryName!,
+                                  style: AppFonts.cairoFont(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
                         if (store.cityName != null && store.cityName!.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withAlpha(20),
-                              borderRadius: BorderRadius.circular(5),
+                              color: Colors.blue.shade500.withAlpha(18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.blue.shade500.withAlpha(40), width: 0.8),
                             ),
-                            child: Text(
-                              store.cityName!,
-                              style: AppFonts.cairoFont(fontSize: 9.5, color: Colors.blue.shade800, fontWeight: FontWeight.bold),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.location_on_rounded, size: 11, color: Colors.blue.shade700),
+                                const SizedBox(width: 3),
+                                Text(
+                                  store.cityName!,
+                                  style: AppFonts.cairoFont(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
                       ],
@@ -568,7 +584,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.chevron_left_rounded, color: isDark ? Colors.grey : Colors.grey.shade400, size: 20),
+              Icon(Icons.chevron_right_rounded , color: isDark ? Colors.grey : Colors.grey.shade400, size: 20),
             ],
           ),
         ),
@@ -771,34 +787,50 @@ class _MenuScreenState extends State<MenuScreen> {
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 4,
-                    runSpacing: 2,
+                    runSpacing: 3,
                     children: [
                       if (store.storeCategoryName != null && store.storeCategoryName!.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(20),
-                            borderRadius: BorderRadius.circular(4),
+                            color: AppColors.primary.withAlpha(18),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(color: AppColors.primary.withAlpha(35), width: 0.7),
                           ),
-                          child: Text(
-                            store.storeCategoryName!,
-                            style: AppFonts.cairoFont(fontSize: 9, color: AppColors.primary, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.category_rounded, size: 10, color: AppColors.primary),
+                              const SizedBox(width: 2),
+                              Text(
+                                store.storeCategoryName!,
+                                style: AppFonts.cairoFont(fontSize: 9.5, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       if (store.cityName != null && store.cityName!.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withAlpha(20),
-                            borderRadius: BorderRadius.circular(4),
+                            color: Colors.blue.shade500.withAlpha(18),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(color: Colors.blue.shade500.withAlpha(35), width: 0.7),
                           ),
-                          child: Text(
-                            store.cityName!,
-                            style: AppFonts.cairoFont(fontSize: 9, color: Colors.blue.shade800, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.location_on_rounded, size: 10, color: Colors.blue.shade700),
+                              const SizedBox(width: 2),
+                              Text(
+                                store.cityName!,
+                                style: AppFonts.cairoFont(fontSize: 9.5, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                     ],
@@ -920,7 +952,7 @@ class _MenuScreenState extends State<MenuScreen> {
     final horizontalMargin = (screenWidth * 0.04).clamp(12.0, 20.0);
 
     return Container(
-      margin: EdgeInsets.fromLTRB(horizontalMargin, 12, horizontalMargin, 8),
+      margin: EdgeInsets.fromLTRB(horizontalMargin, 8, horizontalMargin, 4),
       child: Column(
         children: [
           CarouselSlider.builder(
@@ -942,17 +974,17 @@ class _MenuScreenState extends State<MenuScreen> {
               return Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 30 : 15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      color: Colors.black.withAlpha(isDark ? 30 : 12),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     onTap: () {
                       if (ad.imageUrl.isNotEmpty) {
@@ -1146,7 +1178,7 @@ class _MenuScreenState extends State<MenuScreen> {
                               .firstWhere((c) => c.id == _selectedCityId, orElse: () => cityProvider.cities.first)
                               .name;
                           return Chip(
-                            avatar: const Icon(Icons.location_city, size: 14, color: Colors.white),
+                            avatar: const Icon(Icons.location_on_rounded, size: 14, color: Colors.white),
                             label: Text('المدينة: $cityName', style: AppFonts.cairoFont(fontSize: 11, color: Colors.white)),
                             backgroundColor: Colors.blue.shade700,
                             deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white),
@@ -1173,7 +1205,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 22),
                   const SizedBox(width: 6),
                   Text(
-                    'المطاعم والمتاجر 🏬',
+                    'المطاعم والمتاجر',
                     style: AppFonts.cairoFont(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

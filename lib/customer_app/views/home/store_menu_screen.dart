@@ -213,7 +213,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             ),
           ),
 
-          // 2. Store Info Header Bar (Description, Phone, Address & Search)
+          // 2. Store Info Header Bar (Description, Phone, Address)
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -287,143 +287,177 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                       style: AppFonts.cairoFont(color: isDark ? Colors.grey.shade400 : Colors.grey.shade700, fontSize: 12),
                     ),
                   ],
-
-                  const SizedBox(height: 12),
-
-                  // Search Bar inside Store
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    style: AppFonts.cairoFont(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن وجبة أو صنف في ${widget.store.name}...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      filled: true,
-                      fillColor: isDark ? const Color(0xFF2C2C2E) : Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
                 ],
               ),
             ),
           ),
 
-          // 3. Store Categories Avatars Circular Row (أقسام المطعم بالصور)
-          if (storeCategories.isNotEmpty)
-            SliverToBoxAdapter(
+          // 3. Sticky Search Bar & Category Navigation Bar (Pinned Header)
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyStoreHeaderDelegate(
+              height: storeCategories.isNotEmpty ? 156.0 : 62.0,
               child: Container(
-                height: 95,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    // "All" option
-                    GestureDetector(
-                      onTap: () => setState(() => _selectedCategoryId = null),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 14),
-                        child: Column(
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: _selectedCategoryId == null
-                                    ? AppColors.primary
-                                    : (isDark ? AppColors.darkSurfaceLight : Colors.grey.shade100),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _selectedCategoryId == null ? AppColors.primary : Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.restaurant_menu,
-                                size: 24,
-                                color: _selectedCategoryId == null ? Colors.white : (isDark ? Colors.white : Colors.grey.shade700),
-                              ),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : Colors.white,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+                      width: 1,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 30 : 10),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Search Bar inside Store
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) => setState(() => _searchQuery = val),
+                          style: AppFonts.cairoFont(fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: 'ابحث عن وجبة أو صنف في ${widget.store.name}...',
+                            prefixIcon: const Icon(Icons.search, size: 20),
+                            filled: true,
+                            isDense: true,
+                            fillColor: isDark ? const Color(0xFF2C2C2E) : Colors.grey.shade100,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'الكل',
-                              style: AppFonts.cairoFont(
-                                fontSize: 10,
-                                fontWeight: _selectedCategoryId == null ? FontWeight.bold : FontWeight.normal,
-                                color: _selectedCategoryId == null ? AppColors.primary : (isDark ? Colors.white : Colors.black),
-                              ),
-                            ),
-                          ],
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
 
-                    // Categories with Images
-                    ...storeCategories.map((cat) {
-                      final isSelected = _selectedCategoryId == cat.id;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedCategoryId = cat.id),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 14),
-                          child: Column(
+                      // Store Categories Avatars Circular Row (أقسام المطعم بالصور)
+                      if (storeCategories.isNotEmpty)
+                        SizedBox(
+                          height: 88,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                             children: [
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected ? AppColors.primary : Colors.grey.shade300,
-                                    width: 2.0,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [BoxShadow(color: AppColors.primary.withAlpha(50), blurRadius: 6)]
-                                      : [],
-                                ),
-                                child: ClipOval(
-                                  child: CustomCachedImage(
-                                    imageUrl: cat.imageUrl,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorWidget: const Icon(Icons.fastfood, size: 24, color: Colors.grey),
+                              // "All" option
+                              GestureDetector(
+                                onTap: () => setState(() => _selectedCategoryId = null),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 14),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: _selectedCategoryId == null
+                                              ? AppColors.primary
+                                              : (isDark ? AppColors.darkSurfaceLight : Colors.grey.shade100),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: _selectedCategoryId == null ? AppColors.primary : Colors.grey.shade300,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.grid_view_rounded,
+                                          size: 22,
+                                          color: _selectedCategoryId == null ? Colors.white : (isDark ? Colors.white : Colors.grey.shade700),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'الكل',
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 10,
+                                          fontWeight: _selectedCategoryId == null ? FontWeight.bold : FontWeight.normal,
+                                          color: _selectedCategoryId == null ? AppColors.primary : (isDark ? Colors.white : Colors.black),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                cat.name,
-                                style: AppFonts.cairoFont(
-                                  fontSize: 10,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? AppColors.primary : (isDark ? Colors.white : Colors.black),
-                                ),
-                              ),
+
+                              // Categories with Images
+                              ...storeCategories.map((cat) {
+                                final isSelected = _selectedCategoryId == cat.id;
+                                return GestureDetector(
+                                  onTap: () => setState(() => _selectedCategoryId = cat.id),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 14),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                                              width: 2.0,
+                                            ),
+                                            boxShadow: isSelected
+                                                ? [BoxShadow(color: AppColors.primary.withAlpha(50), blurRadius: 6)]
+                                                : [],
+                                          ),
+                                          child: ClipOval(
+                                            child: CustomCachedImage(
+                                              imageUrl: cat.imageUrl,
+                                              width: 46,
+                                              height: 46,
+                                              fit: BoxFit.cover,
+                                              errorWidget: const Icon(Icons.fastfood, size: 22, color: Colors.grey),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          cat.name,
+                                          style: AppFonts.cairoFont(
+                                            fontSize: 10,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            color: isSelected ? AppColors.primary : (isDark ? Colors.white : Colors.black),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                         ),
-                      );
-                    }),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
+          ),
 
           // 4. Section Title & List/Grid View Switcher
           SliverToBoxAdapter(
@@ -1019,5 +1053,28 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
         ),
       ),
     );
+  }
+}
+
+class _StickyStoreHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  _StickyStoreHeaderDelegate({required this.child, required this.height});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  bool shouldRebuild(covariant _StickyStoreHeaderDelegate oldDelegate) {
+    return oldDelegate.height != height || oldDelegate.child != child;
   }
 }
