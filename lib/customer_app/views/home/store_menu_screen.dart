@@ -893,11 +893,27 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            Formatters.formatCurrency(effectivePrice),
-                            style: AppFonts.cairoFont(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                Formatters.formatCurrency(effectivePrice),
+                                style: AppFonts.cairoFont(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (hasDisc)
+                                Text(
+                                  Formatters.formatCurrency(product.price),
+                                  style: AppFonts.cairoFont(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.grey,
+                                    fontSize: 10,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
                           ),
                         ),
                         if (!product.isAvailable)

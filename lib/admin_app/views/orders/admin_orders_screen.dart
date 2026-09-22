@@ -667,6 +667,34 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                   ),
                 ),
 
+                // Updated By Admin Badge (تتبع المدير الذي قبل أو عدل الطلب - للإدارة فقط)
+                if (order.updatedByAdminName != null && order.updatedByAdminName!.trim().isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurfaceLight : Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200.withAlpha(120)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.admin_panel_settings_outlined, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'تم القبول/التعديل بواسطة: ',
+                          style: AppFonts.cairoFont(fontSize: 10.5, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          order.updatedByAdminName!,
+                          style: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Customer Name, Phone, and Address
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1131,7 +1159,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       message: 'هل أنت متأكد من تغيير حالة الطلب؟ سيتم نقل الطلبات المكتملة أو الملغاة فوراً إلى سجل الطلبات القديمة.',
     );
     if (confirm == true) {
-      final ok = await provider.updateOrderStatus(orderId, newStatus);
+      final ok = await provider.updateOrderStatus(
+        orderId,
+        newStatus,
+        adminId: admin?.id,
+        adminName: admin?.fullName,
+      );
       if (ok && mounted) {
         CustomDialog.showSuccessSnackBar(context, 'تم تعديل حالة الطلب بنجاح ⚡');
       }

@@ -90,6 +90,7 @@ class AdminPermissions {
   static const String reportsViewSummary = 'reports_view_summary';
   static const String reportsViewFinancial = 'reports_view_financial';
   static const String reportsExportPdf = 'reports_export_pdf';
+  static const String reportsFilterByAdmin = 'reports_filter_by_admin';
 
   // --- 10. Sub-Admins Management Module ---
   static const String subAdminsView = 'sub_admins_view';
@@ -103,7 +104,36 @@ class AdminPermissions {
   static const String paymentMethodsEdit = 'payment_methods_edit';
   static const String paymentMethodsDelete = 'payment_methods_delete';
 
-  /// All 11 Categorized Permission Groups with metadata for the UI
+  // --- 12. Cities Module ---
+  static const String citiesView = 'cities_view';
+  static const String citiesAdd = 'cities_add';
+  static const String citiesEdit = 'cities_edit';
+  static const String citiesDelete = 'cities_delete';
+
+  // --- 13. Stores & Vendor Link Module ---
+  static const String storesView = 'stores_view';
+  static const String storesAdd = 'stores_add';
+  static const String storesEdit = 'stores_edit';
+  static const String storesLinkCategoriesCities = 'stores_link_categories_cities';
+  static const String storesToggleStatus = 'stores_toggle_status';
+  static const String storesDelete = 'stores_delete';
+
+  // --- 14. Store Categories Module ---
+  static const String storeCategoriesView = 'store_categories_view';
+  static const String storeCategoriesAdd = 'store_categories_add';
+  static const String storeCategoriesEdit = 'store_categories_edit';
+  static const String storeCategoriesDelete = 'store_categories_delete';
+
+  /// Calculate dynamic total count of all micro-permissions
+  static int get allPermissionsCount {
+    int total = 0;
+    for (final group in allGroups) {
+      total += group.items.length;
+    }
+    return total;
+  }
+
+  /// All Categorized Permission Groups with metadata for the UI
   static const List<AdminPermissionGroup> allGroups = [
     AdminPermissionGroup(
       id: 'products',
@@ -411,6 +441,12 @@ class AdminPermissions {
           description: 'توليد ملف PDF شامل للمبيعات وطباعته أو مشاركته',
           icon: Icons.picture_as_pdf_outlined,
         ),
+        AdminPermissionItem(
+          key: reportsFilterByAdmin,
+          title: 'فلترة التقارير حسب المدير',
+          description: 'تصفية ومتابعة تقارير المبيعات حسب المدير الذي قام بقبول الطلب أو تعديل حالته',
+          icon: Icons.person_search_outlined,
+        ),
       ],
     ),
 
@@ -475,6 +511,117 @@ class AdminPermissions {
           key: paymentMethodsDelete,
           title: 'حذف طرق وسائط الدفع',
           description: 'إزالة وطرح وسيلة الدفع نهائياً من القائمة',
+          icon: Icons.delete_outline,
+        ),
+      ],
+    ),
+
+    AdminPermissionGroup(
+      id: 'cities',
+      title: '🏙️ إدارة المدن',
+      icon: Icons.location_city_outlined,
+      color: Colors.brown,
+      items: [
+        AdminPermissionItem(
+          key: citiesView,
+          title: 'عرض قائمة المدن المتاحة',
+          description: 'استعراض أسماء المدن المخدومة في النظام',
+          icon: Icons.location_city,
+        ),
+        AdminPermissionItem(
+          key: citiesAdd,
+          title: 'إضافة مدينة جديدة',
+          description: 'إدراج مدينة جديدة لنطاق توصيل التطبيق',
+          icon: Icons.add_location_outlined,
+        ),
+        AdminPermissionItem(
+          key: citiesEdit,
+          title: 'تعديل أسماء المدن',
+          description: 'تعديل وتغيير اسم المدينة المسجلة',
+          icon: Icons.edit_location_outlined,
+        ),
+        AdminPermissionItem(
+          key: citiesDelete,
+          title: 'حذف مدينة نهائياً',
+          description: 'إزالة ومسح المدينة من قائمة المدن المفعلة',
+          icon: Icons.wrong_location_outlined,
+        ),
+      ],
+    ),
+
+    AdminPermissionGroup(
+      id: 'stores',
+      title: '🏪 إدارة المطاعم والمتاجر',
+      icon: Icons.storefront_outlined,
+      color: Colors.deepPurple,
+      items: [
+        AdminPermissionItem(
+          key: storesView,
+          title: 'عرض قائمة المطاعم والمتاجر',
+          description: 'تصفح واستعراض المتاجر المسجلة في النظام',
+          icon: Icons.store_outlined,
+        ),
+        AdminPermissionItem(
+          key: storesAdd,
+          title: 'إضافة مطعم/متجر جديد',
+          description: 'إنشاء حساب وتفاصيل مطعم جديد ورفع شعاره',
+          icon: Icons.add_business_outlined,
+        ),
+        AdminPermissionItem(
+          key: storesEdit,
+          title: 'تعديل بيانات المطاعم والمتاجر',
+          description: 'تغيير الاسم، الوصف، العنوان، التلفون وصور الغلاف',
+          icon: Icons.edit_note_outlined,
+        ),
+        AdminPermissionItem(
+          key: storesLinkCategoriesCities,
+          title: 'ربط المطاعم بالأقسام والمدن 🔗',
+          description: 'تحديد وتعيين المدينة والقسم الذي ينتمي إليه المحل',
+          icon: Icons.hub_outlined,
+        ),
+        AdminPermissionItem(
+          key: storesToggleStatus,
+          title: 'فتح وإغلاق المطاعم والمتاجر 🔴🟢',
+          description: 'التبديل الفوري لاستقبال أو إيقاف الطلبات لكل مطعم',
+          icon: Icons.power_settings_new_outlined,
+        ),
+        AdminPermissionItem(
+          key: storesDelete,
+          title: 'حذف مطعم/متجر نهائياً',
+          description: 'إزالة المحل وجميع بيانتة من النظام',
+          icon: Icons.delete_forever_outlined,
+        ),
+      ],
+    ),
+
+    AdminPermissionGroup(
+      id: 'store_categories',
+      title: '🏷️ إدارة أقسام المحلات والتصنيفات',
+      icon: Icons.category_outlined,
+      color: Colors.pink,
+      items: [
+        AdminPermissionItem(
+          key: storeCategoriesView,
+          title: 'عرض أقسام المحلات',
+          description: 'استعراض أقسام وتصنيفات المحلات والمطاعم',
+          icon: Icons.grid_view_outlined,
+        ),
+        AdminPermissionItem(
+          key: storeCategoriesAdd,
+          title: 'إضافة قسم محلات جديد',
+          description: 'إنشاء قسم جديد مثل (مطاعم، كفتيريا، سوبرماركت...)',
+          icon: Icons.library_add_outlined,
+        ),
+        AdminPermissionItem(
+          key: storeCategoriesEdit,
+          title: 'تعديل أقسام المحلات',
+          description: 'تغيير اسم وأيقونة قسم المحلات',
+          icon: Icons.edit_note_outlined,
+        ),
+        AdminPermissionItem(
+          key: storeCategoriesDelete,
+          title: 'حذف قسم المحلات',
+          description: 'إزالة وشطب قسم المحلات نهائياً',
           icon: Icons.delete_outline,
         ),
       ],

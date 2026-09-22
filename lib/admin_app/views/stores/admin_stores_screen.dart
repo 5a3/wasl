@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/shimmer_loading_list.dart';
 import '../../../shared/models/store_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/vendor_store_provider.dart';
 import 'add_edit_store_screen.dart';
 
@@ -34,18 +36,34 @@ class _AdminStoresScreenState extends State<AdminStoresScreen> {
   }
 
   void _openAddStore() {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.storesAdd)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة مطاعم/محلات جديدة 🔒');
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AddEditStoreScreen()),
     );
   }
 
   void _openEditStore(StoreModel store) {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.storesEdit)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل المحلات 🔒');
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => AddEditStoreScreen(storeToEdit: store)),
     );
   }
 
   void _confirmDelete(StoreModel store) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.storesDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف المحلات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف المطعم',
@@ -233,21 +251,26 @@ class _AdminStoresScreenState extends State<AdminStoresScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Switch.adaptive(
-                                      value: store.isOpen,
-                                      activeColor: Colors.green,
-                                      inactiveThumbColor: Colors.red.shade400,
-                                      inactiveTrackColor: Colors.red.shade100,
-                                      onChanged: (val) async {
-                                        final ok = await provider.toggleStoreStatus(store.id, val);
-                                        if (ok && context.mounted) {
-                                          CustomDialog.showSuccessSnackBar(
-                                            context,
-                                            val ? 'تم فتح مطعم "${store.name}" 🟢' : 'تم إغلاق مطعم "${store.name}" 🔴',
-                                          );
-                                        }
-                                      },
-                                    ),
+                                      Switch.adaptive(
+                                        value: store.isOpen,
+                                        activeColor: Colors.green,
+                                        inactiveThumbColor: Colors.red.shade400,
+                                        inactiveTrackColor: Colors.red.shade100,
+                                        onChanged: (val) async {
+                                          final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+                                          if (admin != null && !admin.hasPermission(AdminPermissions.storesToggleStatus)) {
+                                            CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تغيير حالة المحل 🔒');
+                                            return;
+                                          }
+                                          final ok = await provider.toggleStoreStatus(store.id, val);
+                                          if (ok && context.mounted) {
+                                            CustomDialog.showSuccessSnackBar(
+                                              context,
+                                              val ? 'تم فتح مطعم "${store.name}" 🟢' : 'تم إغلاق مطعم "${store.name}" 🔴',
+                                            );
+                                          }
+                                        },
+                                      ),
                                   ],
                                 ),
                                 Row(

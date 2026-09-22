@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../shared/models/city_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/city_provider.dart';
 
 class AdminCitiesScreen extends StatefulWidget {
@@ -34,6 +36,20 @@ class _AdminCitiesScreenState extends State<AdminCitiesScreen> {
 
   void _showAddOrEditCityDialog([CityModel? cityToEdit]) {
     final isEditing = cityToEdit != null;
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.citiesEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل المدن 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.citiesAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة مدن جديدة 🔒');
+        return;
+      }
+    }
+
     final cityController = TextEditingController(text: cityToEdit?.name ?? '');
 
     showDialog(
@@ -112,6 +128,12 @@ class _AdminCitiesScreenState extends State<AdminCitiesScreen> {
   }
 
   void _confirmDelete(CityModel city) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.citiesDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف المدن 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف المدينة',

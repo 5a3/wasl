@@ -179,7 +179,7 @@ class _AdminSubAdminsScreenState extends State<AdminSubAdminsScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      'محدد (${selectedPermissions.length} من 42 صلاحية)',
+                                      'محدد (${selectedPermissions.length} من ${AdminPermissions.allPermissionsCount} صلاحية)',
                                       style: AppFonts.cairoFont(
                                         fontSize: 11,
                                         color: AppColors.primary,

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/admin_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../shared/models/store_category_model.dart';
+import '../../providers/admin_auth_provider.dart';
 import '../../providers/store_category_provider.dart';
 
 class AdminStoreCategoriesScreen extends StatefulWidget {
@@ -34,6 +36,20 @@ class _AdminStoreCategoriesScreenState extends State<AdminStoreCategoriesScreen>
 
   void _showAddOrEditCategoryDialog([StoreCategoryModel? categoryToEdit]) {
     final isEditing = categoryToEdit != null;
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+
+    if (isEditing) {
+      if (admin != null && !admin.hasPermission(AdminPermissions.storeCategoriesEdit)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية تعديل أقسام المحلات 🔒');
+        return;
+      }
+    } else {
+      if (admin != null && !admin.hasPermission(AdminPermissions.storeCategoriesAdd)) {
+        CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية إضافة أقسام جديدة للمحلات 🔒');
+        return;
+      }
+    }
+
     final categoryController = TextEditingController(text: categoryToEdit?.name ?? '');
 
     showDialog(
@@ -112,6 +128,12 @@ class _AdminStoreCategoriesScreenState extends State<AdminStoreCategoriesScreen>
   }
 
   void _confirmDelete(StoreCategoryModel category) async {
+    final admin = Provider.of<AdminAuthProvider>(context, listen: false).currentAdmin;
+    if (admin != null && !admin.hasPermission(AdminPermissions.storeCategoriesDelete)) {
+      CustomDialog.showErrorSnackBar(context, 'عذراً، حسابك لا يمتلك صلاحية حذف أقسام المحلات 🔒');
+      return;
+    }
+
     final confirm = await CustomDialog.showConfirmDialog(
       context: context,
       title: 'حذف قسم المحل',

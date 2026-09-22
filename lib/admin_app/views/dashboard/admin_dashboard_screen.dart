@@ -295,46 +295,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 8),
 
                     // Option 1: Manage Stores & Vendors
-                    _buildDrawerItem(
-                      icon: Icons.storefront_outlined,
-                      title: 'إدارة المطاعم والمتاجر 🏪',
-                      subtitle: 'إضافة وتعديل المطاعم وحالة كل مطعم',
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminStoresScreen()),
-                        );
-                      },
-                    ),
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.storesView, AdminPermissions.storesAdd, AdminPermissions.storesEdit, AdminPermissions.storesToggleStatus]))
+                      _buildDrawerItem(
+                        icon: Icons.storefront_outlined,
+                        title: 'إدارة المطاعم والمتاجر 🏪',
+                        subtitle: 'إضافة وتعديل المطاعم وحالة كل مطعم',
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminStoresScreen()),
+                          );
+                        },
+                      ),
 
                     // Option: Manage Cities
-                    _buildDrawerItem(
-                      icon: Icons.location_city_outlined,
-                      title: 'إدارة المدن 🏙️',
-                      subtitle: 'إضافة وتعديل وحذف المدن المتاحة',
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminCitiesScreen()),
-                        );
-                      },
-                    ),
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.citiesView, AdminPermissions.citiesAdd, AdminPermissions.citiesEdit]))
+                      _buildDrawerItem(
+                        icon: Icons.location_city_outlined,
+                        title: 'إدارة المدن 🏙️',
+                        subtitle: 'إضافة وتعديل وحذف المدن المتاحة',
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminCitiesScreen()),
+                          );
+                        },
+                      ),
 
                     // Option: Manage Store Categories
-                    _buildDrawerItem(
-                      icon: Icons.category_outlined,
-                      title: 'إدارة أقسام المحلات 🏷️',
-                      subtitle: 'إضافة وتعديل أقسام المحلات (مطعم، كفتيريا...)',
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminStoreCategoriesScreen()),
-                        );
-                      },
-                    ),
+                    if (admin != null && admin.hasAnyPermission(const [AdminPermissions.storeCategoriesView, AdminPermissions.storeCategoriesAdd, AdminPermissions.storeCategoriesEdit]))
+                      _buildDrawerItem(
+                        icon: Icons.category_outlined,
+                        title: 'إدارة أقسام المحلات 🏷️',
+                        subtitle: 'إضافة وتعديل أقسام المحلات (مطعم، كفتيريا...)',
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminStoreCategoriesScreen()),
+                          );
+                        },
+                      ),
 
                     // Option 2: Reports & Analytics
                     if (admin != null && admin.hasAnyPermission(const [AdminPermissions.reportsViewSummary, AdminPermissions.reportsViewFinancial, AdminPermissions.reportsExportPdf]))
@@ -427,22 +430,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           );
                         },
                       ),
-
-                    // Option 7: Stores Management
-                    _buildDrawerItem(
-                      icon: Icons.storefront_outlined,
-                      title: 'إدارة المطاعم والمتاجر 🏪',
-                      subtitle: 'إضافة وتعديل المطاعم وحالتها',
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AdminStoresScreen(),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),

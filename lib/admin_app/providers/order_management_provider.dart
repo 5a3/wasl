@@ -291,7 +291,12 @@ class OrderManagementProvider extends ChangeNotifier {
   }
 
   /// Update Order Status & automatically aggregate daily stats when Delivered
-  Future<bool> updateOrderStatus(String orderId, String newStatus) async {
+  Future<bool> updateOrderStatus(
+    String orderId,
+    String newStatus, {
+    String? adminId,
+    String? adminName,
+  }) async {
     try {
       final orderRef = _firestore.collection(FirebaseConstants.collectionOrders).doc(orderId);
       final now = DateTime.now();
@@ -334,33 +339,53 @@ class OrderManagementProvider extends ChangeNotifier {
         });
       }
 
-      await orderRef.update({
+      final Map<String, dynamic> updateData = {
         'status': newStatus,
         'updatedAt': Timestamp.fromDate(now),
-      });
+      };
+
+      final effectiveAdminId = adminId ?? localActiveOrder?.updatedByAdminId;
+      final effectiveAdminName = adminName ?? localActiveOrder?.updatedByAdminName;
+
+      if (effectiveAdminId != null && effectiveAdminId.isNotEmpty) {
+        updateData['updatedByAdminId'] = effectiveAdminId;
+      }
+      if (effectiveAdminName != null && effectiveAdminName.isNotEmpty) {
+        updateData['updatedByAdminName'] = effectiveAdminName;
+      }
+
+      await orderRef.update(updateData);
 
       // Update local state lists instantly for smooth UX transitions
-      if (newStatus == AppConstants.statusDelivered || newStatus == AppConstants.statusCanceled) {
-        if (localActiveOrder != null) {
-          final updatedOrder = OrderModel(
-            id: localActiveOrder.id,
-            orderNumber: localActiveOrder.orderNumber,
-            customerId: localActiveOrder.customerId,
-            customerName: localActiveOrder.customerName,
-            customerPhone: localActiveOrder.customerPhone,
-            deliveryAddress: localActiveOrder.deliveryAddress,
-            deliveryZoneId: localActiveOrder.deliveryZoneId,
-            deliveryZoneName: localActiveOrder.deliveryZoneName,
-            deliveryFee: localActiveOrder.deliveryFee,
-            subtotal: localActiveOrder.subtotal,
-            totalAmount: localActiveOrder.totalAmount,
-            status: newStatus,
-            items: localActiveOrder.items,
-            note: localActiveOrder.note,
-            createdAt: localActiveOrder.createdAt,
-            updatedAt: now,
-          );
+      if (localActiveOrder != null) {
+        final updatedOrder = OrderModel(
+          id: localActiveOrder.id,
+          orderNumber: localActiveOrder.orderNumber,
+          customerId: localActiveOrder.customerId,
+          customerName: localActiveOrder.customerName,
+          customerPhone: localActiveOrder.customerPhone,
+          deliveryAddress: localActiveOrder.deliveryAddress,
+          deliveryZoneId: localActiveOrder.deliveryZoneId,
+          deliveryZoneName: localActiveOrder.deliveryZoneName,
+          deliveryFee: localActiveOrder.deliveryFee,
+          subtotal: localActiveOrder.subtotal,
+          totalAmount: localActiveOrder.totalAmount,
+          status: newStatus,
+          items: localActiveOrder.items,
+          note: localActiveOrder.note,
+          additionalPhone: localActiveOrder.additionalPhone,
+          paymentMethodId: localActiveOrder.paymentMethodId,
+          paymentMethodName: localActiveOrder.paymentMethodName,
+          paymentNote: localActiveOrder.paymentNote,
+          createdAt: localActiveOrder.createdAt,
+          updatedAt: now,
+          storeId: localActiveOrder.storeId,
+          storeName: localActiveOrder.storeName,
+          updatedByAdminId: effectiveAdminId,
+          updatedByAdminName: effectiveAdminName,
+        );
 
+        if (newStatus == AppConstants.statusDelivered || newStatus == AppConstants.statusCanceled) {
           if (!_completedOrders.any((o) => o.id == orderId)) {
             _completedOrders.insert(0, updatedOrder);
           }

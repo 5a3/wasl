@@ -64,6 +64,8 @@ class OrderModel {
   final DateTime updatedAt;
   final String? storeId;
   final String? storeName;
+  final String? updatedByAdminId;
+  final String? updatedByAdminName;
 
   OrderModel({
     required this.id,
@@ -88,6 +90,8 @@ class OrderModel {
     required this.updatedAt,
     this.storeId,
     this.storeName,
+    this.updatedByAdminId,
+    this.updatedByAdminName,
   });
 
   String get statusArabic {
@@ -131,6 +135,8 @@ class OrderModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'storeId': storeId,
       'storeName': storeName,
+      'updatedByAdminId': updatedByAdminId,
+      'updatedByAdminName': updatedByAdminName,
     };
   }
 
@@ -161,6 +167,8 @@ class OrderModel {
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       storeId: map['storeId'],
       storeName: map['storeName'],
+      updatedByAdminId: map['updatedByAdminId'],
+      updatedByAdminName: map['updatedByAdminName'],
     );
   }
 }

@@ -55,11 +55,13 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   String? _selectedCityId;
   String? _selectedCategoryId;
   String? _selectedProductId;
+  String? _selectedAdminName;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AdminAuthProvider>(context, listen: false).fetchSubAdmins();
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
       Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
@@ -193,6 +195,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       final ct = cityProvider.cities.where((c) => c.id == _selectedCityId);
       if (ct.isNotEmpty) filterDesc += ' | ${ct.first.name}';
     }
+    if (_selectedAdminName != null && _selectedAdminName!.isNotEmpty) {
+      filterDesc += ' | المدير: $_selectedAdminName';
+    }
 
     String reportTitle = 'كشف مبيعات عام';
     if (_selectedProductId != null) {
@@ -222,6 +227,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     });
 
     int totalQty = topProductsList.fold(0, (sum, item) => sum + item.qty);
+
+    final canViewFinancial = admin?.hasPermission(AdminPermissions.reportsViewFinancial) ?? true;
 
     pdf.addPage(
       pw.Page(
@@ -276,7 +283,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     pw.Column(
                       children: [
                         pw.Text(r('الدخل للفترة'), style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                        pw.Text(r(Formatters.formatCurrency(totalRev)), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: amiriBold, color: PdfColors.green)),
+                        pw.Text(r(canViewFinancial ? Formatters.formatCurrency(totalRev) : '🔒 غير مصرح'), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: amiriBold, color: PdfColors.green)),
                       ],
                     ),
                     pw.Column(
@@ -313,7 +320,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                   r(o.customerPhone),
                                   r(Formatters.formatDateTime(o.createdAt)),
                                   r('${item.quantity} قطع'),
-                                  r(Formatters.formatCurrency(item.totalPrice)),
+                                  r(canViewFinancial ? Formatters.formatCurrency(item.totalPrice) : '🔒 غير مصرح'),
                                 ];
                               }).toList(),
                               border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey300),
@@ -334,7 +341,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                   data: topProductsList.map((p) => [
                                     r(p.name),
                                     r('${p.qty} قطع'),
-                                    r(Formatters.formatCurrency(p.revenue)),
+                                    r(canViewFinancial ? Formatters.formatCurrency(p.revenue) : '🔒 غير مصرح'),
                                   ]).toList(),
                                   border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey300),
                                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: amiriBold, fontSize: 8),
@@ -353,7 +360,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                   data: topProductsList.take(8).map((p) => [
                                     r(p.name),
                                     r('${p.qty} قطع'),
-                                    r(Formatters.formatCurrency(p.revenue)),
+                                    r(canViewFinancial ? Formatters.formatCurrency(p.revenue) : '🔒 غير مصرح'),
                                   ]).toList(),
                                   border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey300),
                                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: amiriBold, fontSize: 8),
@@ -369,7 +376,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                     r(c.name),
                                     r(c.phone),
                                     r('${c.count} طلبات'),
-                                    r(Formatters.formatCurrency(c.spent)),
+                                    r(canViewFinancial ? Formatters.formatCurrency(c.spent) : '🔒 غير مصرح'),
                                   ]).toList(),
                                   border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey300),
                                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: amiriBold, fontSize: 8),
@@ -408,6 +415,36 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     final cityProvider = Provider.of<CityProvider>(context);
     final deliveryZoneProvider = Provider.of<DeliveryZoneProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final currentAdmin = authProvider.currentAdmin;
+    if (currentAdmin != null && !currentAdmin.hasPermission(AdminPermissions.reportsViewSummary)) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'التقارير والإحصائيات 📊',
+            style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          elevation: 1,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock, size: 64, color: AppColors.danger),
+              const SizedBox(height: 16),
+              Text(
+                'عذراً، حسابك لا يمتلك صلاحية عرض التقارير والإحصائيات 🔒',
+                style: AppFonts.cairoFont(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final canViewFinancial = currentAdmin?.hasPermission(AdminPermissions.reportsViewFinancial) ?? true;
+    final canFilterByAdmin = currentAdmin?.hasPermission(AdminPermissions.reportsFilterByAdmin) ?? true;
 
     // 1. Get completed orders filtered by Store & City in range
     final completedOrders = analyticsProvider.detailedOrders.where((o) {
@@ -477,6 +514,21 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       return true;
     }).toList();
 
+    // 5) Admin names list for filter
+    final Set<String> adminNamesSet = {};
+    for (var a in authProvider.subAdmins) {
+      if (a.fullName.trim().isNotEmpty) adminNamesSet.add(a.fullName.trim());
+    }
+    if (authProvider.currentAdmin != null && authProvider.currentAdmin!.fullName.trim().isNotEmpty) {
+      adminNamesSet.add(authProvider.currentAdmin!.fullName.trim());
+    }
+    for (var o in completedOrders) {
+      if (o.updatedByAdminName != null && o.updatedByAdminName!.trim().isNotEmpty) {
+        adminNamesSet.add(o.updatedByAdminName!.trim());
+      }
+    }
+    final List<String> availableAdminNames = adminNamesSet.toList()..sort();
+
     // 4. Calculate stats based on filters in memory
     double calculatedRevenue = 0.0;
     int calculatedOrdersCount = 0;
@@ -486,6 +538,12 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     Map<String, _CustomerStats> customerStats = {};
 
     for (var order in completedOrders) {
+      if (_selectedAdminName != null && _selectedAdminName!.isNotEmpty) {
+        if (order.updatedByAdminName != _selectedAdminName) {
+          continue;
+        }
+      }
+
       bool orderHasMatchingItems = false;
       double orderMatchingAmount = 0.0;
       int orderMatchingQty = 0;
@@ -752,7 +810,46 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 10),
+
+                          // 5. Admin Filter (تتبع المشرف والمدير)
+                          DropdownButtonFormField<String?>(
+                            value: canFilterByAdmin && availableAdminNames.contains(_selectedAdminName) ? _selectedAdminName : null,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: canFilterByAdmin ? '5. المدير الذي قبل أو عدّل الطلب 👤' : '5. الفلترة بالمدير 🔒 (غير مصرح)',
+                              labelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              enabled: canFilterByAdmin,
+                            ),
+                            items: canFilterByAdmin
+                                ? [
+                                    DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('جميع المدراء المشرفين (الكل)', style: AppFonts.cairoFont(fontSize: 12)),
+                                    ),
+                                    ...availableAdminNames.map((adminName) => DropdownMenuItem<String?>(
+                                          value: adminName,
+                                          child: Text(adminName, style: AppFonts.cairoFont(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                        )),
+                                  ]
+                                : [
+                                    DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('غير مصرح لك بالتصفية حسب المدير 🔒', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey)),
+                                    ),
+                                  ],
+                            onChanged: canFilterByAdmin
+                                ? (val) {
+                                    setState(() {
+                                      _selectedAdminName = val;
+                                    });
+                                  }
+                                : null,
+                          ),
                           const Divider(height: 24),
+
                           // Visual Hierarchy Summary Tree
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -822,6 +919,16 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(right: 28),
                                   child: _buildHierarchyRow(
+                                    icon: Icons.person_search_outlined,
+                                    iconColor: Colors.deepOrange,
+                                    label: 'المدير المسؤول:',
+                                    value: _selectedAdminName ?? 'جميع المدراء المشرفين',
+                                    connector: '├── ',
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 28),
+                                  child: _buildHierarchyRow(
                                     icon: Icons.local_shipping_rounded,
                                     iconColor: Colors.indigo,
                                     label: 'المناطق:',
@@ -851,7 +958,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     children: [
                       _buildStatCard(
                         'إجمالي الإيرادات',
-                        Formatters.formatCurrency(calculatedRevenue),
+                        canViewFinancial ? Formatters.formatCurrency(calculatedRevenue) : '🔒 غير مصرح',
                         Icons.account_balance_wallet,
                         AppColors.success,
                       ),
@@ -869,7 +976,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       ),
                       _buildStatCard(
                         'متوسط الطلب',
-                        Formatters.formatCurrency(calculatedOrdersCount > 0 ? calculatedRevenue / calculatedOrdersCount : 0),
+                        canViewFinancial ? Formatters.formatCurrency(calculatedOrdersCount > 0 ? calculatedRevenue / calculatedOrdersCount : 0) : '🔒 غير مصرح',
                         Icons.trending_up,
                         AppColors.info,
                       ),
@@ -938,7 +1045,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                           style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          '${item.qty} قطع (${Formatters.formatCurrency(item.revenue)})',
+                                          '${item.qty} قطع (${canViewFinancial ? Formatters.formatCurrency(item.revenue) : '🔒 غير مصرح'})',
                                           style: AppFonts.cairoFont(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold),
                                         ),
                                       ],
@@ -997,7 +1104,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text('${cust.count} طلبات', style: AppFonts.cairoFont(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                                      Text(Formatters.formatCurrency(cust.spent), style: AppFonts.cairoFont(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold)),
+                                      Text(canViewFinancial ? Formatters.formatCurrency(cust.spent) : '🔒 غير مصرح', style: AppFonts.cairoFont(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold)),
                                     ],
                                   ),
                                 ),
