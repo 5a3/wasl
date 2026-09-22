@@ -11,6 +11,9 @@ import '../../../core/widgets/custom_cached_image.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../core/widgets/custom_textfield.dart';
 import '../../../shared/models/store_model.dart';
+import '../../providers/category_provider.dart';
+import '../../providers/city_provider.dart';
+import '../../providers/store_category_provider.dart';
 import '../../providers/vendor_store_provider.dart';
 
 class AddEditStoreScreen extends StatefulWidget {
@@ -32,6 +35,11 @@ class _AddEditStoreScreenState extends State<AddEditStoreScreen> {
   bool _isOpen = true;
   bool _isSaving = false;
 
+  String? _selectedCategoryId;
+  String? _selectedCategoryName;
+  String? _selectedCityId;
+  String? _selectedCityName;
+
   dynamic _pickedLogoFile;
   String? _pickedLogoName;
 
@@ -47,8 +55,19 @@ class _AddEditStoreScreenState extends State<AddEditStoreScreen> {
     _phoneController = TextEditingController(text: widget.storeToEdit?.phone ?? '');
     _addressController = TextEditingController(text: widget.storeToEdit?.address ?? '');
     _descriptionController = TextEditingController(text: widget.storeToEdit?.description ?? '');
-    _ratingController = TextEditingController(text: (widget.storeToEdit?.rating ?? 5.0).toString());
+    _ratingController = TextEditingController(text: (widget.storeToEdit?.rating ?? 5.0).toStringAsFixed(1));
     _isOpen = widget.storeToEdit?.isOpen ?? true;
+
+    _selectedCategoryId = widget.storeToEdit?.storeCategoryId;
+    _selectedCategoryName = widget.storeToEdit?.storeCategoryName;
+    _selectedCityId = widget.storeToEdit?.cityId;
+    _selectedCityName = widget.storeToEdit?.cityName;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
+      Provider.of<CityProvider>(context, listen: false).fetchCities();
+      Provider.of<StoreCategoryProvider>(context, listen: false).fetchStoreCategories();
+    });
   }
 
   @override
@@ -145,6 +164,10 @@ class _AddEditStoreScreenState extends State<AddEditStoreScreen> {
         rating: double.tryParse(_ratingController.text.trim()) ?? 5.0,
         isOpen: _isOpen,
         createdAt: widget.storeToEdit?.createdAt ?? DateTime.now(),
+        storeCategoryId: _selectedCategoryId,
+        storeCategoryName: _selectedCategoryName,
+        cityId: _selectedCityId,
+        cityName: _selectedCityName,
       );
 
       bool success;
@@ -317,6 +340,138 @@ class _AddEditStoreScreenState extends State<AddEditStoreScreen> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'يرجى إدخال اسم المطعم' : null,
               ),
               const SizedBox(height: 16),
+
+              // Store Category Dropdown Selection
+              Consumer<StoreCategoryProvider>(
+                builder: (context, storeCatProvider, _) {
+                  final storeCats = storeCatProvider.storeCategories;
+                  final hasMatch = storeCats.any((c) => c.id == _selectedCategoryId);
+                  return DropdownButtonFormField<String?>(
+                    value: hasMatch ? _selectedCategoryId : null,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'قسم / نوع المحل (اختيار القسم) *',
+                      labelStyle: AppFonts.cairoFont(fontSize: 14),
+                      prefixIcon: const Icon(Icons.category, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                    ),
+                    hint: Text(
+                      storeCatProvider.isLoading
+                          ? 'جاري تحميل الأقسام...'
+                          : storeCats.isEmpty
+                              ? 'لا تتوفر أقسام مضافة'
+                              : 'اختر قسم المحل (مثال: مطعم، كفتيريا...)',
+                      style: AppFonts.cairoFont(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                    items: storeCats.map((c) {
+                      return DropdownMenuItem<String?>(
+                        value: c.id,
+                        child: Text(
+                          c.name,
+                          style: AppFonts.cairoFont(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val == null) {
+                        setState(() {
+                          _selectedCategoryId = null;
+                          _selectedCategoryName = null;
+                        });
+                        return;
+                      }
+                      final match = storeCats.where((c) => c.id == val);
+                      setState(() {
+                        _selectedCategoryId = val;
+                        _selectedCategoryName = match.isNotEmpty ? match.first.name : null;
+                      });
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // City Dropdown Selection
+              Consumer<CityProvider>(
+                builder: (context, cityProvider, _) {
+                  final cities = cityProvider.cities;
+                  final hasMatch = cities.any((c) => c.id == _selectedCityId);
+                  return DropdownButtonFormField<String?>(
+                    value: hasMatch ? _selectedCityId : null,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'المدينة التابع لها المحل *',
+                      labelStyle: AppFonts.cairoFont(fontSize: 14),
+                      prefixIcon: const Icon(Icons.location_city, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                    ),
+                    hint: Text(
+                      cityProvider.isLoading
+                          ? 'جاري تحميل المدن...'
+                          : cities.isEmpty
+                              ? 'لا تتوفر مدن مضافة'
+                              : 'اختر المدينة (مثال: حريضة، حورة...)',
+                      style: AppFonts.cairoFont(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                    items: cities.map((c) {
+                      return DropdownMenuItem<String?>(
+                        value: c.id,
+                        child: Text(
+                          c.name,
+                          style: AppFonts.cairoFont(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val == null) {
+                        setState(() {
+                          _selectedCityId = null;
+                          _selectedCityName = null;
+                        });
+                        return;
+                      }
+                      final match = cities.where((c) => c.id == val);
+                      setState(() {
+                        _selectedCityId = val;
+                        _selectedCityName = match.isNotEmpty ? match.first.name : null;
+                      });
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
               CustomTextField(
                 controller: _phoneController,
                 labelText: 'رقم هاتف التواصل',
@@ -342,8 +497,9 @@ class _AddEditStoreScreenState extends State<AddEditStoreScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 controller: _ratingController,
-                labelText: 'التقييم الابتدائي (من 5)',
-                keyboardType: TextInputType.number,
+                labelText: 'التقييم الابتدائي (مثال: 4.8 أو 4.5)',
+                hintText: '4.8',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 prefixIcon: Icons.star,
               ),
               const SizedBox(height: 16),

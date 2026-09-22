@@ -81,6 +81,12 @@ class OrderReceiptDialog extends StatelessWidget {
                       style: const pw.TextStyle(fontSize: 9),
                     ),
                   ),
+                  pw.Center(
+                    child: pw.Text(
+                      cleanPdfText('المطعم / المتجر: ${order.storeName ?? "عام"}'),
+                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, font: cairoBold),
+                    ),
+                  ),
                   pw.SizedBox(height: 4),
                   pw.Divider(thickness: 0.5),
                   pw.SizedBox(height: 4),
@@ -392,6 +398,7 @@ class OrderReceiptDialog extends StatelessWidget {
                       style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const SizedBox(height: 8),
+                    _buildInfoRow(context, 'المطعم / المتجر:', order.storeName ?? 'عام (غير محدد)'),
                     _buildInfoRow(context, 'اسم العميل:', order.customerName),
                     _buildInfoRow(context, 'رقم الجوال:', order.customerPhone),
                     if (order.additionalPhone != null && order.additionalPhone!.trim().isNotEmpty)

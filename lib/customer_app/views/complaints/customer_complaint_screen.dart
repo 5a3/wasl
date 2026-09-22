@@ -316,20 +316,10 @@ class _CustomerComplaintScreenState extends State<CustomerComplaintScreen> {
 
             // Direct Phone Contacts Section (If customer wants direct contact)
             Text(
-              'أو التواصل المباشر مع أصحاب الإدارة والمحل 📞:',
+              'أو التواصل المباشر مع أصحاب الإدارة 📞:',
               style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-
-            // Contact 1: Shop Owner
-            _buildContactCard(
-              title: 'صاحب ومسؤول المحل 🍔',
-              subtitle: 'مقهى جدة للوجبات السريعة',
-              phone: '773062568',
-              isDark: isDark,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 10),
 
             // Contact 2: App Developer & Support
             _buildContactCard(

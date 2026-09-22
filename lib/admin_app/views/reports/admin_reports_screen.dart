@@ -19,6 +19,10 @@ import '../../../core/constants/admin_permissions.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import '../../../shared/models/order_model.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../shared/models/category_model.dart';
+import '../../providers/vendor_store_provider.dart';
+import '../../providers/city_provider.dart';
+import '../../providers/delivery_zone_provider.dart';
 
 class _ProductSalesStats {
   final String name;
@@ -47,8 +51,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTimeRange? _customDateRange;
 
-  String? _selectedProductId;
+  String? _selectedStoreId;
+  String? _selectedCityId;
   String? _selectedCategoryId;
+  String? _selectedProductId;
 
   @override
   void initState() {
@@ -56,6 +62,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
+      Provider.of<CityProvider>(context, listen: false).fetchCities();
+      Provider.of<DeliveryZoneProvider>(context, listen: false).fetchDeliveryZones();
       _fetchReportData();
     });
   }
@@ -152,6 +161,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     AdminAuthProvider authProvider,
     ProductProvider productProvider,
     CategoryProvider categoryProvider,
+    VendorStoreProvider storeProvider,
+    CityProvider cityProvider,
     List<OrderModel> completedOrders,
     List<_ProductSalesStats> topProductsList,
     List<_CustomerStats> topCustomersList,
@@ -174,6 +185,15 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     String r(String text) => PdfHelper.reshapeArabic(text);
 
     String filterDesc = _getReportRangeText();
+    if (_selectedStoreId != null) {
+      final st = storeProvider.stores.where((s) => s.id == _selectedStoreId);
+      if (st.isNotEmpty) filterDesc += ' | ${st.first.name}';
+    }
+    if (_selectedCityId != null) {
+      final ct = cityProvider.cities.where((c) => c.id == _selectedCityId);
+      if (ct.isNotEmpty) filterDesc += ' | ${ct.first.name}';
+    }
+
     String reportTitle = 'كشف مبيعات عام';
     if (_selectedProductId != null) {
       final pName = productProvider.products.firstWhere((p) => p.id == _selectedProductId).name;
@@ -384,11 +404,30 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     final productProvider = Provider.of<ProductProvider>(context);
     final analyticsProvider = Provider.of<AnalyticsProvider>(context);
     final authProvider = Provider.of<AdminAuthProvider>(context);
+    final storeProvider = Provider.of<VendorStoreProvider>(context);
+    final cityProvider = Provider.of<CityProvider>(context);
+    final deliveryZoneProvider = Provider.of<DeliveryZoneProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // 1. Get completed orders in range
-    final completedOrders = analyticsProvider.detailedOrders
-        .where((o) => o.status == AppConstants.statusDelivered)
-        .toList();
+    // 1. Get completed orders filtered by Store & City in range
+    final completedOrders = analyticsProvider.detailedOrders.where((o) {
+      if (o.status != AppConstants.statusDelivered) return false;
+
+      // Filter by Store
+      if (_selectedStoreId != null && _selectedStoreId!.isNotEmpty) {
+        if (o.storeId != _selectedStoreId) return false;
+      }
+
+      // Filter by City
+      if (_selectedCityId != null && _selectedCityId!.isNotEmpty) {
+        final matches = storeProvider.stores.where((s) => s.id == o.storeId);
+        if (matches.isNotEmpty && matches.first.cityId != _selectedCityId) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
 
     // 2. Identify the active category and sub-categories
     Set<String> activeCategoryIds = {};
@@ -398,16 +437,47 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       activeCategoryIds.addAll(subCats.map((c) => c.id));
     }
 
-    // 3. Filter products list by category
+    // Cascading Filter Collections
+    // 1) Stores available under selected city
+    final availableStores = storeProvider.stores.where((s) {
+      if (_selectedCityId != null && _selectedCityId!.isNotEmpty) {
+        return s.cityId == _selectedCityId;
+      }
+      return true;
+    }).toList();
+
+    // 2) Categories available under selected store
+    final List<CategoryModel> availableCategories;
+    if (_selectedStoreId != null && _selectedStoreId!.isNotEmpty) {
+      final storeProducts = productProvider.products.where((p) => p.storeId == _selectedStoreId).toList();
+      final storeCatIds = storeProducts.map((p) => p.mainCategoryId).toSet();
+      final matchedCats = categoryProvider.categories.where((c) => storeCatIds.contains(c.id)).toList();
+      availableCategories = matchedCats.isNotEmpty ? matchedCats : categoryProvider.categories;
+    } else {
+      availableCategories = categoryProvider.categories;
+    }
+
+    // 3) Filter products list by store and category
     List<ProductModel> filteredProductsList = productProvider.products;
-    if (_selectedCategoryId != null) {
-      filteredProductsList = productProvider.products
+    if (_selectedStoreId != null && _selectedStoreId!.isNotEmpty) {
+      filteredProductsList = filteredProductsList.where((p) => p.storeId == _selectedStoreId).toList();
+    }
+    if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
+      filteredProductsList = filteredProductsList
           .where((p) => activeCategoryIds.contains(p.mainCategoryId) || activeCategoryIds.contains(p.subCategoryId))
           .toList();
     }
     final Set<String> filteredProductNames = filteredProductsList.map((p) => p.name).toSet();
 
-    // 4. Calculate stats based on filters in memory (optimized database queries)
+    // 4) Zones available under selected store
+    final availableZones = deliveryZoneProvider.zones.where((z) {
+      if (_selectedStoreId != null && _selectedStoreId!.isNotEmpty) {
+        return z.storeId == _selectedStoreId;
+      }
+      return true;
+    }).toList();
+
+    // 4. Calculate stats based on filters in memory
     double calculatedRevenue = 0.0;
     int calculatedOrdersCount = 0;
     int calculatedItemsSold = 0;
@@ -422,7 +492,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
       for (var item in order.items) {
         if (_selectedProductId != null) {
-          final target = productProvider.products.firstWhere((p) => p.id == _selectedProductId, orElse: () => ProductModel(id: '', name: '', description: '', price: 0, mainCategoryId: '', subCategoryId: '', images: [], createdAt: DateTime.now()));
+          final target = productProvider.products.firstWhere(
+            (p) => p.id == _selectedProductId,
+            orElse: () => ProductModel(id: '', name: '', description: '', price: 0, mainCategoryId: '', subCategoryId: '', images: [], createdAt: DateTime.now()),
+          );
           if (item.productName != target.name) continue;
         } else if (_selectedCategoryId != null) {
           if (!filteredProductNames.contains(item.productName)) continue;
@@ -522,7 +595,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Advanced product/category dropdown filters
+                  // Cascading Filters (City -> Store -> Category -> Product)
                   Card(
                     elevation: 1,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -531,62 +604,143 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'خيارات الفلترة والتصفية المتقدمة:',
-                            style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 10),
                           Row(
                             children: [
-                              // Category filter
+                              const Icon(Icons.account_tree_rounded, color: AppColors.primary, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                'الفلترة المتسلسلة والمترابطة للتقارير:',
+                                style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Row 1: City & Store
+                          Row(
+                            children: [
+                              // 1. City Filter
                               Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedCategoryId,
+                                child: DropdownButtonFormField<String?>(
+                                  value: cityProvider.cities.any((c) => c.id == _selectedCityId) ? _selectedCityId : null,
                                   isExpanded: true,
                                   decoration: InputDecoration(
-                                    labelText: 'الفئة',
-                                    labelStyle: AppFonts.cairoFont(fontSize: 11),
+                                    labelText: '1. المدينة',
+                                    labelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   items: [
-                                    DropdownMenuItem<String>(
+                                    DropdownMenuItem<String?>(
                                       value: null,
-                                      child: Text('جميع الفئات', style: AppFonts.cairoFont(fontSize: 12)),
+                                      child: Text('جميع المدن (الكل)', style: AppFonts.cairoFont(fontSize: 12)),
                                     ),
-                                    ...categoryProvider.categories.map((c) => DropdownMenuItem<String>(
+                                    ...cityProvider.cities.map((c) => DropdownMenuItem<String?>(
                                           value: c.id,
-                                          child: Text(c.name, style: AppFonts.cairoFont(fontSize: 12)),
+                                          child: Text(c.name, style: AppFonts.cairoFont(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                        )),
+                                  ],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedCityId = val;
+                                      // Validate store selection
+                                      if (_selectedStoreId != null) {
+                                        final storeMatch = storeProvider.stores.where((s) => s.id == _selectedStoreId);
+                                        if (storeMatch.isEmpty || (val != null && storeMatch.first.cityId != val)) {
+                                          _selectedStoreId = null;
+                                          _selectedCategoryId = null;
+                                          _selectedProductId = null;
+                                        }
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // 2. Store Filter
+                              Expanded(
+                                child: DropdownButtonFormField<String?>(
+                                  value: availableStores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: '2. المحل / المطعم',
+                                    labelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  items: [
+                                    DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('جميع المحلات', style: AppFonts.cairoFont(fontSize: 12)),
+                                    ),
+                                    ...availableStores.map((s) => DropdownMenuItem<String?>(
+                                          value: s.id,
+                                          child: Text(s.name, style: AppFonts.cairoFont(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                        )),
+                                  ],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedStoreId = val;
+                                      _selectedCategoryId = null;
+                                      _selectedProductId = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Row 2: Category & Product
+                          Row(
+                            children: [
+                              // 3. Category Filter
+                              Expanded(
+                                child: DropdownButtonFormField<String?>(
+                                  value: availableCategories.any((c) => c.id == _selectedCategoryId) ? _selectedCategoryId : null,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: '3. القسم الخاص بالمتجر',
+                                    labelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  items: [
+                                    DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('جميع الأقسام', style: AppFonts.cairoFont(fontSize: 12)),
+                                    ),
+                                    ...availableCategories.map((c) => DropdownMenuItem<String?>(
+                                          value: c.id,
+                                          child: Text(c.name, style: AppFonts.cairoFont(fontSize: 12), overflow: TextOverflow.ellipsis),
                                         )),
                                   ],
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedCategoryId = val;
-                                      _selectedProductId = null; // Reset product filter when category changes
+                                      _selectedProductId = null;
                                     });
                                   },
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              // Product filter
+                              const SizedBox(width: 10),
+                              // 4. Product Filter
                               Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedProductId,
+                                child: DropdownButtonFormField<String?>(
+                                  value: filteredProductsList.any((p) => p.id == _selectedProductId) ? _selectedProductId : null,
                                   isExpanded: true,
                                   decoration: InputDecoration(
-                                    labelText: 'المنتج',
-                                    labelStyle: AppFonts.cairoFont(fontSize: 11),
+                                    labelText: '4. المنتج / الوجبة',
+                                    labelStyle: AppFonts.cairoFont(fontSize: 11, fontWeight: FontWeight.bold),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   items: [
-                                    DropdownMenuItem<String>(
+                                    DropdownMenuItem<String?>(
                                       value: null,
                                       child: Text('جميع المنتجات', style: AppFonts.cairoFont(fontSize: 12)),
                                     ),
-                                    ...filteredProductsList.map((p) => DropdownMenuItem<String>(
+                                    ...filteredProductsList.map((p) => DropdownMenuItem<String?>(
                                           value: p.id,
-                                          child: Text(p.name, style: AppFonts.cairoFont(fontSize: 12)),
+                                          child: Text(p.name, style: AppFonts.cairoFont(fontSize: 12), overflow: TextOverflow.ellipsis),
                                         )),
                                   ],
                                   onChanged: (val) {
@@ -597,6 +751,88 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 ),
                               ),
                             ],
+                          ),
+                          const Divider(height: 24),
+                          // Visual Hierarchy Summary Tree
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.darkSurface : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildHierarchyRow(
+                                  icon: Icons.location_city_rounded,
+                                  iconColor: Colors.purple,
+                                  label: 'المدينة:',
+                                  value: _selectedCityId != null
+                                      ? (cityProvider.cities.where((c) => c.id == _selectedCityId).isNotEmpty
+                                          ? cityProvider.cities.firstWhere((c) => c.id == _selectedCityId).name
+                                          : 'غير معروف')
+                                      : 'جميع المدن',
+                                  isRoot: true,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: _buildHierarchyRow(
+                                    icon: Icons.storefront_rounded,
+                                    iconColor: Colors.blue,
+                                    label: 'المحل:',
+                                    value: _selectedStoreId != null
+                                        ? (storeProvider.stores.where((s) => s.id == _selectedStoreId).isNotEmpty
+                                            ? storeProvider.stores.firstWhere((s) => s.id == _selectedStoreId).name
+                                            : 'غير معروف')
+                                        : 'جميع المحلات',
+                                    connector: '└── ',
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 28),
+                                  child: _buildHierarchyRow(
+                                    icon: Icons.category_rounded,
+                                    iconColor: Colors.orange,
+                                    label: 'الأقسام:',
+                                    value: _selectedCategoryId != null
+                                        ? (categoryProvider.categories.where((c) => c.id == _selectedCategoryId).isNotEmpty
+                                            ? categoryProvider.categories.firstWhere((c) => c.id == _selectedCategoryId).name
+                                            : 'غير معروف')
+                                        : (availableCategories.isNotEmpty
+                                            ? availableCategories.map((c) => c.name).take(4).join('، ') + (availableCategories.length > 4 ? '...' : '')
+                                            : 'جميع الأقسام'),
+                                    connector: '├── ',
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 28),
+                                  child: _buildHierarchyRow(
+                                    icon: Icons.fastfood_rounded,
+                                    iconColor: Colors.teal,
+                                    label: 'المنتجات:',
+                                    value: _selectedProductId != null
+                                        ? (productProvider.products.where((p) => p.id == _selectedProductId).isNotEmpty
+                                            ? productProvider.products.firstWhere((p) => p.id == _selectedProductId).name
+                                            : 'غير معروف')
+                                        : '${filteredProductsList.length} منتج تظهر في التقرير',
+                                    connector: '├── ',
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 28),
+                                  child: _buildHierarchyRow(
+                                    icon: Icons.local_shipping_rounded,
+                                    iconColor: Colors.indigo,
+                                    label: 'المناطق:',
+                                    value: availableZones.isNotEmpty
+                                        ? availableZones.map((z) => z.zoneName).join('، ')
+                                        : 'جميع مناطق التوصيل المتاحة',
+                                    connector: '└── ',
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -648,6 +884,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       authProvider,
                       productProvider,
                       categoryProvider,
+                      storeProvider,
+                      cityProvider,
                       completedOrders,
                       topProductsList,
                       topCustomersList,
@@ -829,6 +1067,56 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           Text(
             value,
             style: AppFonts.cairoFont(fontSize: 15, fontWeight: FontWeight.bold, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHierarchyRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? connector,
+    bool isRoot = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (connector != null)
+            Text(
+              connector,
+              style: AppFonts.cairoFont(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade400,
+              ),
+            ),
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppFonts.cairoFont(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: AppFonts.cairoFont(
+                fontSize: 12,
+                fontWeight: isRoot ? FontWeight.bold : FontWeight.w600,
+                color: isRoot ? AppColors.primary : Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
           ),
         ],
       ),

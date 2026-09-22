@@ -179,6 +179,10 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
                     CustomDialog.showErrorSnackBar(ctx, 'يرجى إدخال اسم طريقة الدفع');
                     return;
                   }
+                  if (!isGlobal && (selectedStoreId == null || selectedStoreId!.isEmpty)) {
+                    CustomDialog.showErrorSnackBar(ctx, 'يرجى اختيار المطعم المربوطة به طريقة الدفع أو تفعيل خيار (عامة لجميع المطاعم)');
+                    return;
+                  }
 
                   final messenger = ScaffoldMessenger.of(context);
                   Navigator.of(ctx).pop();
@@ -358,31 +362,76 @@ class _AdminPaymentMethodsScreenState extends State<AdminPaymentMethodsScreen> {
                             ),
                           ],
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (method.accountNumber.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'رقم الحساب / المحفظة: ${method.accountNumber}',
-                                style: AppFonts.cairoFont(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                        subtitle: Consumer<VendorStoreProvider>(
+                          builder: (context, storeProv, _) {
+                            final linkedStoreName = method.isGlobal
+                                ? 'عامة (جميع المطاعم)'
+                                : (method.storeId != null
+                                    ? (storeProv.getStoreById(method.storeId!)?.name ?? 'مطعم محدد')
+                                    : 'مطعم محدد');
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: method.isGlobal
+                                        ? Colors.purple.withAlpha(20)
+                                        : Colors.amber.shade700.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        method.isGlobal ? Icons.public : Icons.storefront,
+                                        size: 13,
+                                        color: method.isGlobal
+                                            ? Colors.purple.shade700
+                                            : Colors.amber.shade900,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        method.isGlobal
+                                            ? 'طريقة دفع عامة (جميع المطاعم)'
+                                            : 'خاصة بمطعم: $linkedStoreName',
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 10.5,
+                                          color: method.isGlobal
+                                              ? Colors.purple.shade700
+                                              : Colors.amber.shade900,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                            if (method.description.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                method.description,
-                                style: AppFonts.cairoFont(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ],
+                                if (method.accountNumber.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'رقم الحساب / المحفظة: ${method.accountNumber}',
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                                if (method.description.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    method.description,
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,

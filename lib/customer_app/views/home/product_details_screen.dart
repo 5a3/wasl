@@ -4,13 +4,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_cached_image.dart';
-import '../../../core/widgets/custom_dialog.dart';
 import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/product_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../utils/cart_helper.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final ProductModel product;
@@ -50,10 +50,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         ? widget.product.images 
         : [''];
 
-    // Query similar / recommended products like top delivery apps (matching category or name)
+    // Query similar / recommended products strictly from the SAME STORE
     final allProducts = productProvider.products;
+    final currentStoreId = widget.product.storeId;
+
     final similarProducts = allProducts.where((p) {
       if (p.id == widget.product.id) return false;
+
+      // STRICT CHECK: Must belong to the exact same store!
+      if (currentStoreId != null && currentStoreId.isNotEmpty) {
+        if (p.storeId != currentStoreId) return false;
+      }
+
       final sameCategory = p.mainCategoryId == widget.product.mainCategoryId || p.subCategoryId == widget.product.subCategoryId;
       final nameSimilarity = p.name.trim().toLowerCase().split(' ').any((word) => 
         word.length > 2 && widget.product.name.trim().toLowerCase().contains(word)
@@ -61,10 +69,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       return sameCategory || nameSimilarity;
     }).toList();
 
-    // Fallback if category recommendations are sparse
+    // Fallback if category recommendations are sparse (strictly from same store!)
     if (similarProducts.length < 3) {
       for (final item in allProducts) {
         if (item.id != widget.product.id && !similarProducts.contains(item)) {
+          if (currentStoreId != null && currentStoreId.isNotEmpty) {
+            if (item.storeId != currentStoreId) continue;
+          }
           similarProducts.add(item);
         }
         if (similarProducts.length >= 6) break;
@@ -590,7 +601,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           child: IconButton(
                             icon: const Icon(Icons.add, color: AppColors.primary),
                             onPressed: () {
-                              cartProvider.addToCart(widget.product, category: category);
+                              CartHelper.checkAndAddToCart(
+                                context: context,
+                                product: widget.product,
+                                category: category,
+                                showSnackBarOnSuccess: false,
+                              );
                             },
                           ),
                         ),
@@ -617,10 +633,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ),
                         ),
                         onPressed: () {
-                          cartProvider.addToCart(widget.product, category: category);
-                          CustomDialog.showSuccessSnackBar(
-                            context,
-                            'تم إضافة ${widget.product.name} إلى السلة 🍔',
+                          CartHelper.checkAndAddToCart(
+                            context: context,
+                            product: widget.product,
+                            category: category,
+                            showSnackBarOnSuccess: true,
                           );
                         },
                       ),

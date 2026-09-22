@@ -10,6 +10,7 @@ import '../../../shared/models/category_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../utils/cart_helper.dart';
 import '../home/product_details_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -376,7 +377,11 @@ class FavoritesScreen extends StatelessWidget {
                                   InkWell(
                                     onTap: () {
                                       if (product.isAvailable) {
-                                        cartProvider.addToCart(product, category: category);
+                                        CartHelper.checkAndAddToCart(
+                                          context: context,
+                                          product: product,
+                                          category: category,
+                                        );
                                       }
                                     },
                                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
@@ -396,7 +401,11 @@ class FavoritesScreen extends StatelessWidget {
                             InkWell(
                               onTap: () {
                                 if (product.isAvailable) {
-                                  cartProvider.addToCart(product, category: category);
+                                  CartHelper.checkAndAddToCart(
+                                    context: context,
+                                    product: product,
+                                    category: category,
+                                  );
                                 }
                               },
                               borderRadius: BorderRadius.circular(10),

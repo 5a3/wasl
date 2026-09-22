@@ -14,6 +14,8 @@ import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
 import 'add_edit_product_screen.dart';
 
+import '../../providers/vendor_store_provider.dart';
+
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
@@ -24,6 +26,7 @@ class AdminProductsScreen extends StatefulWidget {
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoryId; // null means 'All'
+  String? _selectedStoreId; // null means 'All Stores'
 
   @override
   void initState() {
@@ -31,6 +34,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
+      Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
     });
   }
 
@@ -113,16 +117,20 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               ),
             )
           : null,
-      body: Consumer2<ProductProvider, CategoryProvider>(
-        builder: (context, prodProvider, catProvider, _) {
+      body: Consumer3<ProductProvider, CategoryProvider, VendorStoreProvider>(
+        builder: (context, prodProvider, catProvider, storeProvider, _) {
           // Zero Extra Firebase Reads: local in-memory filtering
           final rawProducts = prodProvider.products;
           final categories = catProvider.mainCategories;
+          final stores = storeProvider.stores;
 
           final filteredProducts = rawProducts.where((product) {
-            if (_selectedCategoryId == null) return true;
-            return product.mainCategoryId == _selectedCategoryId ||
+            final matchesCategory = _selectedCategoryId == null ||
+                product.mainCategoryId == _selectedCategoryId ||
                 product.subCategoryId == _selectedCategoryId;
+            final matchesStore = _selectedStoreId == null ||
+                product.storeId == _selectedStoreId;
+            return matchesCategory && matchesStore;
           }).toList();
 
           CategoryModel? selectedCategory;
@@ -136,24 +144,68 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               // Search Bar Header
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) {
-                    prodProvider.setSearchQuery(val);
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'ابحث باسم المنتج أو الوصف...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: prodProvider.searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              prodProvider.setSearchQuery('');
-                            },
-                          )
-                        : null,
-                  ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        prodProvider.setSearchQuery(val);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'ابحث باسم المنتج أو الوصف...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: prodProvider.searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  prodProvider.setSearchQuery('');
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Store Selector Dropdown Filter
+                    DropdownButtonFormField<String?>(
+                      value: stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'تصفية الوجبات حسب المطعم',
+                        labelStyle: AppFonts.cairoFont(fontSize: 13),
+                        prefixIcon: const Icon(Icons.storefront, color: AppColors.primary, size: 20),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(
+                            'جميع المطاعم (${rawProducts.length} منتج)',
+                            style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        ...stores.map((s) {
+                          final count = rawProducts.where((p) => p.storeId == s.id).length;
+                          return DropdownMenuItem<String?>(
+                            value: s.id,
+                            child: Text(
+                              '${s.name} ($count منتج)',
+                              style: AppFonts.cairoFont(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedStoreId = val;
+                        });
+                      },
+                    ),
+                  ],
                 ),
               ),
 
@@ -161,48 +213,105 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               if (!catProvider.isLoading && categories.isNotEmpty)
                 _buildCategoryFilterBar(prodProvider, categories),
 
-              // Active Category Badge / Counter Info
-              if (_selectedCategoryId != null && selectedCategory != null)
+              // Active Filter Badges / Counter Info
+              if (_selectedCategoryId != null || _selectedStoreId != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(25),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.primary.withAlpha(80)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.category, size: 14, color: AppColors.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'عرض فئة: ${selectedCategory.name} (${filteredProducts.length})',
-                              style: AppFonts.cairoFont(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategoryId = null;
-                                });
-                              },
-                              child: const Icon(Icons.close, size: 16, color: AppColors.primary),
-                            ),
-                          ],
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              if (_selectedCategoryId != null && selectedCategory != null)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withAlpha(25),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppColors.primary.withAlpha(80)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.category, size: 14, color: AppColors.primary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'الفئة: ${selectedCategory.name}',
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedCategoryId = null;
+                                          });
+                                        },
+                                        child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (_selectedStoreId != null)
+                                Builder(builder: (ctx) {
+                                  final st = stores.where((s) => s.id == _selectedStoreId);
+                                  final stName = st.isNotEmpty ? st.first.name : 'المحل';
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withAlpha(25),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.orange.withAlpha(80)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.storefront, size: 14, color: Colors.orange),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'المحل: $stName',
+                                          style: AppFonts.cairoFont(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange.shade900,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedStoreId = null;
+                                            });
+                                          },
+                                          child: Icon(Icons.close, size: 16, color: Colors.orange.shade900),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                            ],
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        'إجمالي الفئة: ${filteredProducts.length}',
-                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${filteredProducts.length}',
+                          style: AppFonts.cairoFont(fontSize: 11, color: Colors.grey.shade800, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),

@@ -36,6 +36,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
   bool _hasDiscount = false;
   String _discountType = 'percentage';
   String? _selectedStoreId;
+  String? _selectedStoreName;
 
   bool get isEditing => widget.categoryToEdit != null;
 
@@ -51,6 +52,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     _hasDiscount = widget.categoryToEdit?.hasDiscount ?? false;
     _discountType = widget.categoryToEdit?.discountType ?? 'percentage';
     _selectedStoreId = widget.categoryToEdit?.storeId;
+    _selectedStoreName = widget.categoryToEdit?.storeName;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<VendorStoreProvider>(context, listen: false).fetchStores();
     });
@@ -138,6 +140,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
           discountType: _discountType,
           discountValue: discountVal,
           storeId: _selectedStoreId,
+          storeName: _selectedStoreName,
         );
       } else {
         ok = await catProvider.addCategory(
@@ -148,6 +151,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
           discountType: _discountType,
           discountValue: discountVal,
           storeId: _selectedStoreId,
+          storeName: _selectedStoreName,
         );
       }
 
@@ -213,32 +217,54 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
               Consumer<VendorStoreProvider>(
                 builder: (context, storeProv, child) {
                   final stores = storeProv.stores;
+                  final hasMatch = stores.any((s) => s.id == _selectedStoreId);
                   return DropdownButtonFormField<String?>(
-                    value: stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
+                    value: hasMatch ? _selectedStoreId : null,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'المطعم التابع له القسم *',
-                      prefixIcon: const Icon(Icons.storefront),
+                      labelStyle: AppFonts.cairoFont(fontSize: 14),
+                      prefixIcon: const Icon(Icons.storefront, color: AppColors.primary),
                       filled: true,
                       fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                     ),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('غير محدد (جميع المطاعم)'),
+                        child: Text(
+                          'غير محدد (جميع المطاعم)',
+                          style: AppFonts.cairoFont(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...stores.map(
                         (s) => DropdownMenuItem<String?>(
                           value: s.id,
-                          child: Text(s.name),
+                          child: Text(
+                            s.name,
+                            style: AppFonts.cairoFont(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
                     onChanged: (val) {
+                      if (val == null) {
+                        setState(() {
+                          _selectedStoreId = null;
+                          _selectedStoreName = null;
+                        });
+                        return;
+                      }
+                      final match = stores.where((s) => s.id == val);
                       setState(() {
                         _selectedStoreId = val;
+                        _selectedStoreName = match.isNotEmpty ? match.first.name : null;
                       });
                     },
                   );

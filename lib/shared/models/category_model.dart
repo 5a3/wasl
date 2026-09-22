@@ -10,6 +10,7 @@ class CategoryModel {
   final String discountType; // 'percentage' or 'fixed'
   final double discountValue;
   final String? storeId;
+  final String? storeName;
 
   CategoryModel({
     required this.id,
@@ -22,6 +23,7 @@ class CategoryModel {
     this.discountType = 'percentage',
     this.discountValue = 0.0,
     this.storeId,
+    this.storeName,
   });
 
   bool get isMainCategory => parentId == null || parentId!.isEmpty;
@@ -38,6 +40,7 @@ class CategoryModel {
       'discountType': discountType,
       'discountValue': discountValue,
       'storeId': storeId,
+      'storeName': storeName,
     };
   }
 
@@ -53,6 +56,7 @@ class CategoryModel {
       discountType: map['discountType'] ?? 'percentage',
       discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
       storeId: map['storeId'],
+      storeName: map['storeName'],
     );
   }
 
@@ -67,6 +71,7 @@ class CategoryModel {
     String? discountType,
     double? discountValue,
     String? storeId,
+    String? storeName,
   }) {
     return CategoryModel(
       id: id ?? this.id,
@@ -79,6 +84,7 @@ class CategoryModel {
       discountType: discountType ?? this.discountType,
       discountValue: discountValue ?? this.discountValue,
       storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
     );
   }
 }

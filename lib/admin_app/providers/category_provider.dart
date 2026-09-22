@@ -79,6 +79,7 @@ class CategoryProvider extends ChangeNotifier {
     String discountType = 'percentage',
     double discountValue = 0.0,
     String? storeId,
+    String? storeName,
   }) async {
     try {
       final docRef = _firestore.collection(FirebaseConstants.collectionCategories).doc();
@@ -92,6 +93,7 @@ class CategoryProvider extends ChangeNotifier {
         discountType: discountType,
         discountValue: discountValue,
         storeId: storeId,
+        storeName: storeName,
       );
 
       await docRef.set(newCat.toMap());
@@ -114,6 +116,7 @@ class CategoryProvider extends ChangeNotifier {
     String discountType = 'percentage',
     double discountValue = 0.0,
     String? storeId,
+    String? storeName,
   }) async {
     try {
       final index = _categories.indexWhere((c) => c.id == id);
@@ -128,7 +131,8 @@ class CategoryProvider extends ChangeNotifier {
           hasDiscount: hasDiscount,
           discountType: discountType,
           discountValue: discountValue,
-          storeId: storeId ?? _categories[index].storeId,
+          storeId: storeId,
+          storeName: storeName ?? _categories[index].storeName,
         );
 
         await _firestore

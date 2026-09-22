@@ -18,6 +18,8 @@ import '../notifications/admin_notifications_screen.dart';
 import '../ads/admin_ads_screen.dart';
 import '../complaints/admin_complaints_screen.dart';
 import '../payment_methods/admin_payment_methods_screen.dart';
+import '../cities/admin_cities_screen.dart';
+import '../store_categories/admin_store_categories_screen.dart';
 import '../stores/admin_stores_screen.dart';
 import '../../../shared/providers/store_provider.dart';
 
@@ -302,6 +304,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Navigator.of(context).pop();
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const AdminStoresScreen()),
+                        );
+                      },
+                    ),
+
+                    // Option: Manage Cities
+                    _buildDrawerItem(
+                      icon: Icons.location_city_outlined,
+                      title: 'إدارة المدن 🏙️',
+                      subtitle: 'إضافة وتعديل وحذف المدن المتاحة',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminCitiesScreen()),
+                        );
+                      },
+                    ),
+
+                    // Option: Manage Store Categories
+                    _buildDrawerItem(
+                      icon: Icons.category_outlined,
+                      title: 'إدارة أقسام المحلات 🏷️',
+                      subtitle: 'إضافة وتعديل أقسام المحلات (مطعم، كفتيريا...)',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AdminStoreCategoriesScreen()),
                         );
                       },
                     ),

@@ -134,71 +134,137 @@ class _AdminStoresScreenState extends State<AdminStoresScreen> {
                     final store = filtered[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 2,
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: store.logoUrl != null && store.logoUrl!.isNotEmpty
-                              ? CustomCachedImage(imageUrl: store.logoUrl!, width: 50, height: 50)
-                              : Container(
-                                  width: 50,
-                                  height: 50,
-                                  color: AppColors.primary.withAlpha(25),
-                                  child: const Icon(Icons.store, color: AppColors.primary),
-                                ),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                store.name,
-                                style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: store.isOpen ? Colors.green.withAlpha(25) : Colors.red.withAlpha(25),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                store.isOpen ? 'مفتوح' : 'مغلق',
-                                style: AppFonts.cairoFont(
-                                  fontSize: 12,
-                                  color: store.isOpen ? Colors.green : Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Column(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (store.phone != null && store.phone!.isNotEmpty)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: store.logoUrl != null && store.logoUrl!.isNotEmpty
+                                      ? CustomCachedImage(imageUrl: store.logoUrl!, width: 55, height: 55)
+                                      : Container(
+                                          width: 55,
+                                          height: 55,
+                                          color: AppColors.primary.withAlpha(25),
+                                          child: const Icon(Icons.store, color: AppColors.primary, size: 28),
+                                        ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        store.name,
+                                        style: AppFonts.cairoFont(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          if (store.storeCategoryName != null && store.storeCategoryName!.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withAlpha(20),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'القسم: ${store.storeCategoryName!}',
+                                                style: AppFonts.cairoFont(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                          if (store.cityName != null && store.cityName!.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withAlpha(20),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'المدينة: ${store.cityName!}',
+                                                style: AppFonts.cairoFont(fontSize: 10, color: Colors.blue.shade800, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (store.phone != null && store.phone!.isNotEmpty) ...[
+                              const SizedBox(height: 6),
                               Text('هاتف: ${store.phone!}', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700)),
-                            if (store.address != null && store.address!.isNotEmpty)
+                            ],
+                            if (store.address != null && store.address!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
                               Text('العنوان: ${store.address!}', style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700)),
-                            if (store.description != null && store.description!.isNotEmpty)
+                            ],
+                            if (store.description != null && store.description!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
                               Text(
                                 store.description!,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey),
                               ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: AppColors.primary),
-                              onPressed: () => _openEditStore(store),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: AppColors.danger),
-                              onPressed: () => _confirmDelete(store),
+                            ],
+                            const Divider(height: 16),
+                            // Action Row (Switch status & edit/delete)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      store.isOpen ? 'المحل مفتوح 🟢' : 'المحل مغلق 🔴',
+                                      style: AppFonts.cairoFont(
+                                        fontSize: 12.5,
+                                        color: store.isOpen ? Colors.green.shade700 : AppColors.danger,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Switch.adaptive(
+                                      value: store.isOpen,
+                                      activeColor: Colors.green,
+                                      inactiveThumbColor: Colors.red.shade400,
+                                      inactiveTrackColor: Colors.red.shade100,
+                                      onChanged: (val) async {
+                                        final ok = await provider.toggleStoreStatus(store.id, val);
+                                        if (ok && context.mounted) {
+                                          CustomDialog.showSuccessSnackBar(
+                                            context,
+                                            val ? 'تم فتح مطعم "${store.name}" 🟢' : 'تم إغلاق مطعم "${store.name}" 🔴',
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: AppColors.primary),
+                                      onPressed: () => _openEditStore(store),
+                                      tooltip: 'تعديل المحل',
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: AppColors.danger),
+                                      onPressed: () => _confirmDelete(store),
+                                      tooltip: 'حذف المحل',
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ],
                         ),

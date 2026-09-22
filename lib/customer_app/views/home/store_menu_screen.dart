@@ -14,6 +14,7 @@ import '../../../shared/models/product_model.dart';
 import '../../../shared/models/store_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../utils/cart_helper.dart';
 import 'product_details_screen.dart';
 
 class StoreMenuScreen extends StatefulWidget {
@@ -74,29 +75,12 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
       return;
     }
 
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
-    if (cartProvider.isFromDifferentStore(product)) {
-      final confirm = await CustomDialog.showConfirmDialog(
-        context: context,
-        title: 'تغيير المطعم 🛒',
-        message: 'سلتك تحتوي على وجبات من مطعم "${cartProvider.currentStoreName}". هل تريد تفريغ السلة والبدء بطلب جديد من "${widget.store.name}"؟',
-        confirmText: 'تفريغ والبدء من جديد',
-        cancelText: 'إلغاء',
-        confirmColor: AppColors.primary,
-      );
-
-      if (confirm == true) {
-        cartProvider.clearCart();
-        cartProvider.addToCart(product, category: category);
-        if (mounted) {
-          CustomDialog.showSuccessSnackBar(context, 'تم البدء بطلب جديد من ${widget.store.name}');
-        }
-      }
-    } else {
-      cartProvider.addToCart(product, category: category);
-      CustomDialog.showSuccessSnackBar(context, 'تم إضافة ${product.name} إلى السلة');
-    }
+    await CartHelper.checkAndAddToCart(
+      context: context,
+      product: product,
+      category: category,
+      showSnackBarOnSuccess: true,
+    );
   }
 
   @override
@@ -533,37 +517,47 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                       ),
                     )
                   : _isGridView
-                      ? SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                          sliver: SliverGrid(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.58,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            delegate: SliverChildBuilderDelegate(
-                              (ctx, index) {
-                                final product = storeProducts[index];
-                                final category = catProvider.getCategoryById(product.mainCategoryId);
-                                final isFav = favProvider.isFavorite(product.id);
-                                final isInCart = cartProvider.items.containsKey(product.id);
-                                final qty = isInCart ? cartProvider.items[product.id]!.quantity : 0;
+                      ? Builder(
+                          builder: (context) {
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final crossAxisCount = screenWidth >= 900 ? 4 : (screenWidth >= 600 ? 3 : 2);
+                            final childAspectRatio = screenWidth < 360
+                                ? 0.54
+                                : (screenWidth < 400 ? 0.57 : (screenWidth >= 600 ? 0.72 : 0.60));
 
-                                return _buildGridProductCard(
-                                  product,
-                                  isFav,
-                                  isInCart,
-                                  qty,
-                                  isDark,
-                                  favProvider,
-                                  cartProvider,
-                                  category,
-                                );
-                              },
-                              childCount: storeProducts.length,
-                            ),
-                          ),
+                            return SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              sliver: SliverGrid(
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  childAspectRatio: childAspectRatio,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (ctx, index) {
+                                    final product = storeProducts[index];
+                                    final category = catProvider.getCategoryById(product.mainCategoryId);
+                                    final isFav = favProvider.isFavorite(product.id);
+                                    final isInCart = cartProvider.items.containsKey(product.id);
+                                    final qty = isInCart ? cartProvider.items[product.id]!.quantity : 0;
+
+                                    return _buildGridProductCard(
+                                      product,
+                                      isFav,
+                                      isInCart,
+                                      qty,
+                                      isDark,
+                                      favProvider,
+                                      cartProvider,
+                                      category,
+                                    );
+                                  },
+                                  childCount: storeProducts.length,
+                                ),
+                              ),
+                            );
+                          },
                         )
                       : SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -620,7 +614,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                              if (!product.isAvailable)
+                                              if (!widget.store.isOpen || !product.isAvailable)
                                                 Positioned.fill(
                                                   child: Container(
                                                     decoration: BoxDecoration(
@@ -689,7 +683,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                                                 icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? AppColors.danger : Colors.grey),
                                                 onPressed: () => favProvider.toggleFavorite(product.id),
                                               ),
-                                              if (!product.isAvailable)
+                                              if (!widget.store.isOpen || !product.isAvailable)
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                   decoration: BoxDecoration(
@@ -836,7 +830,24 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                       ),
                     ),
                   ),
-                if (!product.isAvailable)
+                if (isInCart)
+                  Positioned(
+                    bottom: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      ),
+                      child: Text(
+                        '$qty بالسلة 🛒',
+                        style: AppFonts.cairoFont(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                if (!widget.store.isOpen || !product.isAvailable)
                   Positioned.fill(
                     child: Container(
                       decoration: const BoxDecoration(
@@ -899,6 +910,39 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                             child: Text(
                               'غير متوفر',
                               style: AppFonts.cairoFont(fontSize: 9.5, color: AppColors.danger, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else if (isInCart)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.primary.withAlpha(60)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () => cartProvider.decrementItem(product.id),
+                                  child: const Icon(Icons.remove_circle_outline, color: AppColors.danger, size: 18),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(
+                                    '$qty',
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: widget.store.isOpen ? () => _onAddToCart(product, category) : null,
+                                  child: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 18),
+                                ),
+                              ],
                             ),
                           )
                         else

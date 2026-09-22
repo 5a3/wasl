@@ -163,16 +163,6 @@ class CustomerDrawer extends StatelessWidget {
                 ),
                 _buildDrawerTile(
                   context,
-                  icon: Icons.storefront_outlined,
-                  title: 'اطلب من محل آخر',
-                  badgeText: 'قريباً 🚀',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    CustomDialog.showOrderFromAnotherStoreDialog(context);
-                  },
-                ),
-                _buildDrawerTile(
-                  context,
                   icon: Icons.rate_review_outlined,
                   title: 'الشكاوى والمقترحات',
                   onTap: () {
@@ -428,36 +418,20 @@ class CustomerDrawer extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Partner Logo Header (logoreport.svg)
+                    // App Logo Header
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? AppColors.darkBackground
-                                : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(16),
+                        color: isDark ? AppColors.darkBackground : Colors.grey.shade50,
+                        shape: BoxShape.circle,
                         border: Border.all(
-                          color:
-                              isDark
-                                  ? AppColors.darkBorder
-                                  : Colors.grey.shade200,
+                          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SvgPicture.asset(
-                            'assets/images/logoreport.svg',
-                            height: 55,
-                            fit: BoxFit.contain,
-                          ),
-                          SvgPicture.asset(
-                            'assets/images/logo.svg',
-                            height: 55,
-                            fit: BoxFit.contain,
-                          ),
-                        ],
+                      child: SvgPicture.asset(
+                        'assets/images/logo.svg',
+                        height: 60,
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -480,7 +454,7 @@ class CustomerDrawer extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '🤝 الشريك الرسمي مقهئ جدة للوجبات السريعة',
+                        '🚀 المنصة الشاملة لتوصيل الطلبات والمتاجر',
                         style: AppFonts.cairoFont(
                           fontSize: 11,
                           color: AppColors.primary,
@@ -498,7 +472,7 @@ class CustomerDrawer extends StatelessWidget {
 
                     // Comprehensive Description
                     Text(
-                      'تطبيق "وصل لي" هي المنصة الرقمية والتطبيق الرسمي المعترف به لتصفح وطلب أشهى الوجبات والمأكولات والمشروبات، بالتنسيق والشراكة الاستراتيجية الحصرية مع (مقهى جدة للوجبات السريعة).\n\nيمكّن التطبيق العملاء من تصفح أصناف الوجبات، إضافة الطلبات للسلة، واختيار منطقة التوصيل بدقة، مع تتبع لحظي ومباشر لمراحل الطلب خطوة بخطوة من التجهيز والتحضير وحتى وصول الوجبة الساخنة إليك بسرعة وأمان.',
+                      'تطبيق "وصل لي" هو المنصة الرقمية والتطبيق الشامل لتصفح وطلب أشهى الوجبات والمأكولات والمشروبات والمنتجات من مختلف المطاعم والمتاجر.\n\nيمكّن التطبيق العملاء من تصفح أصناف وتصنيفات المتاجر، إضافة الطلبات للسلة، واختيار منطقة التوصيل بدقة، مع تتبع لحظي ومباشر لمراحل الطلب خطوة بخطوة من التجهيز والتحضير وحتى وصول الطلب إليك بسرعة وأمان.',
                       textAlign: TextAlign.center,
                       style: AppFonts.cairoFont(
                         fontSize: 12.5,

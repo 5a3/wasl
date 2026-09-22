@@ -73,14 +73,23 @@ class ProductModel {
     );
   }
 
-  /// Check if an effective discount is active for this product (direct or via category)
+  /// Helper to check if category level discount belongs to this product's store
+  bool _isCategoryDiscountValid(CategoryModel? category) {
+    if (category == null || !category.hasDiscount || category.discountValue <= 0) return false;
+    if (category.storeId != null && category.storeId!.isNotEmpty && storeId != null && storeId!.isNotEmpty) {
+      if (category.storeId != storeId) return false;
+    }
+    return true;
+  }
+
+  /// Check if an effective discount is active for this product (direct or via matching store category)
   bool hasEffectiveDiscount(CategoryModel? category) {
     if (hasDiscount && discountValue > 0) return true;
-    if (category != null && category.hasDiscount && category.discountValue > 0) return true;
+    if (_isCategoryDiscountValid(category)) return true;
     return false;
   }
 
-  /// Calculates the final discounted price after applying product or category level discounts
+  /// Calculates the final discounted price after applying product or store-matched category level discounts
   double getEffectivePrice(CategoryModel? category) {
     if (hasDiscount && discountValue > 0) {
       if (discountType == 'percentage') {
@@ -90,12 +99,13 @@ class ProductModel {
         final calc = price - discountValue;
         return calc < 0 ? 0.0 : calc;
       }
-    } else if (category != null && category.hasDiscount && category.discountValue > 0) {
-      if (category.discountType == 'percentage') {
-        final calc = price * (1 - (category.discountValue / 100));
+    } else if (_isCategoryDiscountValid(category)) {
+      final cat = category!;
+      if (cat.discountType == 'percentage') {
+        final calc = price * (1 - (cat.discountValue / 100));
         return calc < 0 ? 0.0 : calc;
       } else {
-        final calc = price - category.discountValue;
+        final calc = price - cat.discountValue;
         return calc < 0 ? 0.0 : calc;
       }
     }
@@ -117,11 +127,12 @@ class ProductModel {
       } else {
         return 'خصم ${discountValue.toStringAsFixed(0)} ر.ي';
       }
-    } else if (category != null && category.hasDiscount && category.discountValue > 0) {
-      if (category.discountType == 'percentage') {
-        return 'خصم ${category.discountValue.toStringAsFixed(0)}%';
+    } else if (_isCategoryDiscountValid(category)) {
+      final cat = category!;
+      if (cat.discountType == 'percentage') {
+        return 'خصم ${cat.discountValue.toStringAsFixed(0)}%';
       } else {
-        return 'خصم ${category.discountValue.toStringAsFixed(0)} ر.ي';
+        return 'خصم ${cat.discountValue.toStringAsFixed(0)} ر.ي';
       }
     }
     return '';

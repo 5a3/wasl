@@ -637,6 +637,36 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 ),
                 const Divider(height: 20, thickness: 0.8),
 
+                // Store Name Badge (اسم المطعم)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(18),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withAlpha(60)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.storefront, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'اسم المطعم / المتجر: ',
+                        style: AppFonts.cairoFont(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                      ),
+                      Expanded(
+                        child: Text(
+                          order.storeName != null && order.storeName!.isNotEmpty
+                              ? order.storeName!
+                              : 'عام / غير محدد',
+                          style: AppFonts.cairoFont(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Customer Name, Phone, and Address
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

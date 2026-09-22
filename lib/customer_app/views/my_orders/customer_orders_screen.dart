@@ -419,6 +419,14 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                if (order.storeName != null && order.storeName!.isNotEmpty) ...[
+                                  Text(
+                                    'المطعم: ${order.storeName!}',
+                                    style: AppFonts.cairoFont(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                                 Text(
                                   Formatters.formatDateTime(order.createdAt),
                                   style: AppFonts.cairoFont(fontSize: 10, color: Colors.grey.shade600),

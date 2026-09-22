@@ -19,6 +19,8 @@ import 'core/widgets/offline_banner.dart';
 import 'admin_app/providers/admin_auth_provider.dart';
 import 'admin_app/providers/analytics_provider.dart';
 import 'admin_app/providers/category_provider.dart';
+import 'admin_app/providers/city_provider.dart';
+import 'admin_app/providers/store_category_provider.dart';
 import 'admin_app/providers/delivery_zone_provider.dart';
 import 'admin_app/providers/notification_provider.dart';
 import 'admin_app/providers/order_management_provider.dart';
@@ -36,8 +38,6 @@ import 'customer_app/providers/customer_order_provider.dart';
 import 'customer_app/providers/favorite_provider.dart';
 import 'customer_app/providers/complaint_provider.dart';
 import 'customer_app/views/auth/customer_login_screen.dart';
-import 'customer_app/views/home/customer_home_screen.dart';
-import 'customer_app/views/onboarding/onboarding_screen.dart';
 import 'core/services/fcm_service.dart';
 import 'core/utils/pdf_helper.dart';
 import 'shared/providers/store_provider.dart';
@@ -124,6 +124,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => VendorStoreProvider()),
         ChangeNotifierProvider(create: (_) => AdminAuthProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => CityProvider()),
+        ChangeNotifierProvider(create: (_) => StoreCategoryProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => DeliveryZoneProvider()),
         ChangeNotifierProvider(create: (_) => OrderManagementProvider()),
@@ -202,12 +204,7 @@ class WaslAppMain extends StatelessWidget {
       builder: (context, child) {
         return OfflineBannerWrapper(child: child ?? const SizedBox.shrink());
       },
-      home:
-          !StorageService.isOnboardingCompleted()
-              ? const OnboardingScreen()
-              : (StorageService.isCustomerLoggedIn()
-                  ? const CustomerHomeScreen()
-                  : const CustomerHomeScreen()),
+      home: AdminLoginScreen(),
     );
   }
 }

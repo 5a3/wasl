@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Store Model representing a Restaurant / Shop linked to Store Category and City
 class StoreModel {
   final String id;
   final String name;
@@ -12,6 +13,12 @@ class StoreModel {
   final double rating;
   final DateTime? createdAt;
 
+  // Linked Store Category (قسم/نوع المحل مثل: مطعم، كفتيريا، خضروات...) & City
+  final String? storeCategoryId;
+  final String? storeCategoryName;
+  final String? cityId;
+  final String? cityName;
+
   StoreModel({
     required this.id,
     required this.name,
@@ -23,6 +30,10 @@ class StoreModel {
     this.isOpen = true,
     this.rating = 5.0,
     this.createdAt,
+    this.storeCategoryId,
+    this.storeCategoryName,
+    this.cityId,
+    this.cityName,
   });
 
   factory StoreModel.fromMap(Map<String, dynamic> map, String id) {
@@ -39,6 +50,10 @@ class StoreModel {
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : null,
+      storeCategoryId: map['storeCategoryId'] ?? map['categoryId'],
+      storeCategoryName: map['storeCategoryName'] ?? map['categoryName'],
+      cityId: map['cityId'],
+      cityName: map['cityName'],
     );
   }
 
@@ -55,6 +70,10 @@ class StoreModel {
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
+      'storeCategoryId': storeCategoryId,
+      'storeCategoryName': storeCategoryName,
+      'cityId': cityId,
+      'cityName': cityName,
     };
   }
 
@@ -69,6 +88,10 @@ class StoreModel {
     bool? isOpen,
     double? rating,
     DateTime? createdAt,
+    String? storeCategoryId,
+    String? storeCategoryName,
+    String? cityId,
+    String? cityName,
   }) {
     return StoreModel(
       id: id ?? this.id,
@@ -81,6 +104,10 @@ class StoreModel {
       isOpen: isOpen ?? this.isOpen,
       rating: rating ?? this.rating,
       createdAt: createdAt ?? this.createdAt,
+      storeCategoryId: storeCategoryId ?? this.storeCategoryId,
+      storeCategoryName: storeCategoryName ?? this.storeCategoryName,
+      cityId: cityId ?? this.cityId,
+      cityName: cityName ?? this.cityName,
     );
   }
 }
