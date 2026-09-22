@@ -5,13 +5,19 @@ import 'package:shimmer/shimmer.dart';
 import '../../../admin_app/providers/ad_provider.dart';
 import '../../../admin_app/providers/category_provider.dart';
 import '../../../admin_app/providers/city_provider.dart';
+import '../../../admin_app/providers/product_provider.dart';
 import '../../../admin_app/providers/store_category_provider.dart';
 import '../../../admin_app/providers/vendor_store_provider.dart';
 import '../../../shared/models/ad_model.dart';
+import '../../../shared/models/category_model.dart';
+import '../../../shared/models/product_model.dart';
 import '../../../shared/models/store_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/custom_cached_image.dart';
+import '../../providers/cart_provider.dart';
+import '../../utils/cart_helper.dart';
 import 'store_menu_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -40,6 +46,7 @@ class _MenuScreenState extends State<MenuScreen> {
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
       Provider.of<CityProvider>(context, listen: false).fetchCities();
       Provider.of<StoreCategoryProvider>(context, listen: false).fetchStoreCategories();
+      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
     });
   }
 
@@ -253,6 +260,9 @@ class _MenuScreenState extends State<MenuScreen> {
       slivers: [
         // 1. Ads Carousel Slider at top (scrolls away on scroll)
         SliverToBoxAdapter(child: _buildCarouselAds(adProvider)),
+
+        // 1.5. Circular Offers Highlights Row (Scrolls away with ads)
+        SliverToBoxAdapter(child: _buildOffersRow(context, isDark)),
 
         // 2. Search Bar & Stores Header (Pinned at top when scrolling)
         SliverPersistentHeader(
@@ -1238,6 +1248,454 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Format discount badge text clearly showing percentage or fixed amount saved
+  String _getDiscountBadgeText(ProductModel p, CategoryModel? cat) {
+    if (p.hasDiscount && p.discountValue > 0) {
+      if (p.discountType == 'percentage') {
+        return '%${p.discountValue.toInt()} خصم';
+      } else {
+        return 'وفر ${p.discountValue.toInt()} ر.ي';
+      }
+    } else if (cat != null && cat.hasDiscount && cat.discountValue > 0) {
+      if (cat.discountType == 'percentage') {
+        return '%${cat.discountValue.toInt()} خصم';
+      } else {
+        return 'وفر ${cat.discountValue.toInt()} ر.ي';
+      }
+    }
+    return '🔥 عرض خاص';
+  }
+
+  /// Horizontal circular offers highlights row beneath Carousel Slider
+  Widget _buildOffersRow(BuildContext context, bool isDark) {
+    final productProvider = Provider.of<ProductProvider>(context);
+    final categoryProvider = Provider.of<CategoryProvider>(context);
+
+    // REQUIREMENT 1: Only filter available products that have actual active discounts
+    final offerProducts = productProvider.products.where((p) {
+      if (!p.isAvailable) return false;
+      final cat = categoryProvider.getCategoryById(p.mainCategoryId);
+      return p.hasEffectiveDiscount(cat);
+    }).toList();
+
+    // REQUIREMENT 1: If no products have discount in DB, DO NOT show anything at all
+    if (offerProducts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final displayProducts = offerProducts;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.local_offer_rounded, color: Colors.deepOrange, size: 16),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'عروض وحسومات خاصة 🔥',
+                style: AppFonts.cairoFont(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${displayProducts.length} عرض',
+                  style: AppFonts.cairoFont(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 110,
+          child: Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: displayProducts.length,
+                itemBuilder: (ctx, index) {
+                  final product = displayProducts[index];
+                  final cat = categoryProvider.getCategoryById(product.mainCategoryId);
+                  final badgeText = _getDiscountBadgeText(product, cat);
+                  final inCartCount = cartProvider.items[product.id]?.quantity ?? 0;
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    child: InkWell(
+                      onTap: () => _showProductOfferBottomSheet(context, product, cat),
+                      borderRadius: BorderRadius.circular(40),
+                      child: Column(
+                        children: [
+                          // Circular ring avatar
+                          Container(
+                            width: 66,
+                            height: 66,
+                            padding: const EdgeInsets.all(2.5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Colors.deepOrange, Colors.amber],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.deepOrange.withAlpha(60),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(33),
+                                  child: Container(
+                                    color: isDark ? AppColors.darkSurface : Colors.white,
+                                    child: product.images.isNotEmpty
+                                        ? CustomCachedImage(
+                                            imageUrl: product.images.first,
+                                            width: 61,
+                                            height: 61,
+                                          )
+                                        : Container(
+                                            width: 61,
+                                            height: 61,
+                                            color: AppColors.primary.withAlpha(20),
+                                            child: const Icon(Icons.fastfood, color: AppColors.primary, size: 28),
+                                          ),
+                                  ),
+                                ),
+                                // In-cart indicator badge
+                                if (inCartCount > 0)
+                                  Positioned(
+                                    top: -2,
+                                    right: -2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        '$inCartCount',
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 9.5,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                // REQUIREMENT 2: Clear Discount Badge
+                                Positioned(
+                                  bottom: -5,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.danger,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.white, width: 1.5),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.red.withAlpha(90),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        badgeText,
+                                        style: AppFonts.cairoFont(
+                                          fontSize: 8.5,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Product Title below circle
+                          SizedBox(
+                            width: 72,
+                            child: Text(
+                              product.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: AppFonts.cairoFont(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  /// BottomSheet modal to show product details with live quantity stepper ([- count +])
+  void _showProductOfferBottomSheet(BuildContext context, ProductModel product, CategoryModel? category) {
+    final effectivePrice = product.getEffectivePrice(category);
+    final hasDiscount = product.hasEffectiveDiscount(category);
+    final badgeText = _getDiscountBadgeText(product, category);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            final cartItemCount = cartProvider.items[product.id]?.quantity ?? 0;
+
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: product.images.isNotEmpty
+                            ? CustomCachedImage(imageUrl: product.images.first, width: 90, height: 90)
+                            : Container(
+                                width: 90,
+                                height: 90,
+                                color: AppColors.primary.withAlpha(20),
+                                child: const Icon(Icons.fastfood, size: 40, color: AppColors.primary),
+                              ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.name,
+                              style: AppFonts.cairoFont(fontSize: 17, fontWeight: FontWeight.bold),
+                            ),
+                            if (product.storeName != null && product.storeName!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.storefront, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      product.storeName!,
+                                      style: AppFonts.cairoFont(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Text(
+                                  Formatters.formatCurrency(effectivePrice),
+                                  style: AppFonts.cairoFont(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                if (hasDiscount) ...[
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    Formatters.formatCurrency(product.price),
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // REQUIREMENT 2: Clear Discount Banner inside dialog
+                  if (hasDiscount) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha(15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withAlpha(50)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_offer, size: 16, color: AppColors.danger),
+                          const SizedBox(width: 8),
+                          Text(
+                            'خصم مُميّز: $badgeText',
+                            style: AppFonts.cairoFont(
+                              fontSize: 13,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (product.description.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      product.description,
+                      style: AppFonts.cairoFont(fontSize: 13, color: Colors.grey.shade700),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+
+                  // REQUIREMENT 3: Stepper Counter [- count +] in-place without closing modal
+                  cartItemCount == 0
+                      ? SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () async {
+                              await CartHelper.checkAndAddToCart(
+                                context: context,
+                                product: product,
+                                category: category,
+                                showSnackBarOnSuccess: true,
+                              );
+                            },
+                            icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
+                            label: Text(
+                              'إضافة إلى السلة 🛒',
+                              style: AppFonts.cairoFont(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          height: 52,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(20),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary, width: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  cartItemCount == 1 ? Icons.delete_outline : Icons.remove_circle_outline,
+                                  color: cartItemCount == 1 ? AppColors.danger : AppColors.primary,
+                                  size: 24,
+                                ),
+                                onPressed: () {
+                                  cartProvider.decrementItem(product.id);
+                                },
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(Icons.shopping_bag, size: 20, color: AppColors.primary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$cartItemCount في السلة',
+                                    style: AppFonts.cairoFont(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle, color: AppColors.primary, size: 28),
+                                onPressed: () async {
+                                  if (cartProvider.isFromDifferentStore(product)) {
+                                    await CartHelper.checkAndAddToCart(
+                                      context: context,
+                                      product: product,
+                                      category: category,
+                                    );
+                                  } else {
+                                    cartProvider.addToCart(product, category: category);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
