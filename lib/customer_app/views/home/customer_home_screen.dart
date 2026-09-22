@@ -17,6 +17,7 @@ import '../../../core/services/fcm_service.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/custom_dialog.dart';
 import 'menu_screen.dart';
+import '../../../core/services/in_app_update_service.dart';
 import '../../../shared/providers/store_provider.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      InAppUpdateService.checkForUpdate(context);
       Provider.of<CustomerNotificationProvider>(
         context,
         listen: false,
